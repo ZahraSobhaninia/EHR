@@ -1,0 +1,20 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+  model: "researcher_data:Zahra/032026/Xgboost_OOT/MDS/ARF/Train"   
+  folds_dir: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDS/2_Finetune/ARF/Data/Finetunedata"
+  test_data_dir: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDS/3_Holdout/ARF/Data/Holdout_Data" 
+  run_name: "evaluate"
+
+  predictions: "researcher_data:Zahra/032026/Xgboost_OOT/MDS/ARF/Evalutation" 
+
+return_feature_importance:
+  importance_type: "gain"
+
+metrics:
+  roc_auc: 
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc: 
+    _target_: sklearn.metrics.average_precision_score

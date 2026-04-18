@@ -1,0 +1,25 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+  model: "researcher_data:Zahra/XGboost_OOT/MD/ARF/Train" 
+    #"researcher_data:Zahra/XGboost/MDP_withoutP/Mortality/Train"
+  folds_dir: "researcher_data:Zahra/CoreBehrt_OOT/MD/3_Finetune/ARF/Data/FinetuneData" 
+  # "researcher_data:Zahra/CoreBehrt/MDP_withoutP/3_Finetune/Mortality/Data/FinetuneData/811"     
+                            
+     #"./outputs/finetuning/processed_data"
+  test_data_dir: "researcher_data:Zahra/CoreBehrt_OOT/MD/5_Evaluate/ARF/Data/Heldout_Data"
+    # Corss Val : "researcher_data:Zahra/CoreBehrt/MDP_withoutP/4_Evaluate/Mortality/Data/Heldout_Data/811"         #"./outputs/testing/held_out/processed_data" 
+  run_name: "evaluate"
+
+  predictions: researcher_data:Zahra/XGboost_OOT/MD/ARF/Evaluate
+
+return_feature_importance:
+  importance_type: "gain"
+
+metrics:
+  roc_auc: 
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc: 
+    _target_: sklearn.metrics.average_precision_score

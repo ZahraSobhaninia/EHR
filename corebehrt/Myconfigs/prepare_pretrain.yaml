@@ -1,0 +1,29 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+## INPUTS
+
+  features: "azureml://datastores/researcher_data/paths/Zahra/032026/CoreBehrt_OOT/MD/0_CreateData/features"
+  tokenized: "azureml://datastores/researcher_data/paths/Zahra/032026/CoreBehrt_OOT/MD/0_CreateData/tokenized"
+
+  # tokenized_file: ...
+  # tokenized_pids: ...
+
+## OUTPUTS
+  prepared_data: "researcher_data:Zahra/032026/CoreBehrt_OOT/MD/1_Pretrain/Data/" # Save model/outputs to this folder
+  #runs: ./outputs/pretraining # Use for generating a new model folder
+
+data:
+  type: "pretrain"
+  val_ratio: 0.2 # only used if predefined_splits is false
+  truncation_len: 512
+  min_len: 2
+  predefined_splits: false
+   # set to true if you want to use predefined splits for reproducibility. Expects a list (of length 1) of dicts with train, val created by select_cohort
+  
+  cutoff_date:
+    year: 2020
+    month: 1
+    day: 1

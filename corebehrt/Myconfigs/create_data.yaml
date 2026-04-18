@@ -1,0 +1,25 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+  data: "azureml://datastores/researcher_data/paths/Zahra/032026/Data_OOT/MEDS_MD/data"
+
+      #"azureml://datastores/researcher_data/paths/Zahra/Data09-2025/MEDS_wholeData/MD/data"
+
+
+  features: "azureml://datastores/researcher_data/paths/Zahra/032026/CoreBehrt_OOT/MD/0_CreateData/features"
+                #"azureml://datastores/researcher_data/paths/Zahra/CoreBehrt_OOT/MD/0_CreateData/features"
+  tokenized: "azureml://datastores/researcher_data/paths/Zahra/032026/CoreBehrt_OOT/MD/0_CreateData/tokenized"  
+               #"azureml://datastores/researcher_data/paths/Zahra/CoreBehrt_OOT/MD/0_CreateData/tokenized"
+  # optional
+  # code_mapping: ./outputs/code_mapping.pt
+  # vocabulary: ./outputs/vocabulary # vocab folderS
+# exclude_held_out: true # exclude held out patients data creation
+tokenizer:
+  sep_tokens: true
+  cls_token: true
+
+excluder:
+  min_age: -1
+  max_age: 120

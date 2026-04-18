@@ -1,0 +1,7 @@
+NoteBooks/CoreBehrtRes/FineTune/patients_df-copy.csv
+NoteBooks/CoreBehrtRes/FineTune/patients.pt
+NoteBooks/CoreBehrtRes/Heldout/PRI/bert_eval_oof/embeddings/fold_1/cls_embeddings.pt
+NoteBooks/CoreBehrtRes/Heldout/PRI/bert_eval_oof/embeddings/fold_2/cls_embeddings.pt
+NoteBooks/CoreBehrtRes/Heldout/PRI/bert_eval_oof/embeddings/fold_3/cls_embeddings.pt
+NoteBooks/CoreBehrtRes/Heldout/PRI/bert_eval_oof/embeddings/fold_4/cls_embeddings.pt
+NoteBooks/CoreBehrtRes/Heldout/PRI/bert_eval_oof/embeddings/fold_5/cls_embeddings.pt
