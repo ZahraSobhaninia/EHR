@@ -12,6 +12,10 @@ def get_sampler(cfg, outcomes: List[int]) -> Optional[WeightedRandomSampler]:
     If sampler_function is false or undefined, then no sampler is used.
     If sample_weight_function is defined then the function is used to calculate the weights.
     """
+     # multi-task: disable sampler
+    if len(outcomes) > 0 and isinstance(outcomes[0], dict):
+        return None
+    
     sampler_function = cfg.trainer_args.get("sampler_function")
     if sampler_function:
         label_weight = instantiate_function(sampler_function)(outcomes)
@@ -91,6 +95,9 @@ def get_loss_weight(cfg, outcomes: List[int]) -> Optional[List[float]]:
     If loss_weight_function is false or undefined, then no positive weight is used.
     If loss_weight_function is defined then the function is used to calculate the weights.
     """
+    # multi-task: disable loss weight
+    if len(outcomes) > 0 and isinstance(outcomes[0], dict):
+        return None
     if cfg.trainer_args.get("loss_weight_function") is None or len(outcomes) == 0:
         return None
 

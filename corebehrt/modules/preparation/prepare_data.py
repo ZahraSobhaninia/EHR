@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 from corebehrt.constants.data import ABSPOS_COL, PID_COL, TIMESTAMP_COL
 from corebehrt.constants.paths import INDEX_DATES_FILE, OUTCOMES_FILE, PID_FILE
-from corebehrt.functional.cohort_handling.outcomes import get_binary_outcomes
 from corebehrt.functional.features.normalize import normalize_segments_for_patient
 from corebehrt.functional.io_operations.load import load_vocabulary
 from corebehrt.functional.io_operations.save import save_vocabulary
@@ -36,8 +35,11 @@ from corebehrt.modules.features.loader import ShardLoader
 from corebehrt.modules.monitoring.logger import TqdmToLogger
 from corebehrt.modules.preparation.dataset import PatientData, PatientDataset
 from corebehrt.modules.setup.config import Config
+from corebehrt.functional.cohort_handling.outcomes import get_binary_outcomes, get_multitask_binary_outcomes
 
 logger = logging.getLogger(__name__)  # Get the logger for this module
+
+
 
 
 # TODO: Add option to load test set only!
@@ -92,9 +94,18 @@ class DatasetPreparer:
             # --------------------
         # STEP 3 - Load outcomes
         # --------------------
-        outcomes = pd.read_csv(paths_cfg.outcome)
-        outcomes[PID_COL] = outcomes[PID_COL].astype(int)
-
+        #outcomes = pd.read_csv(paths_cfg.outcome)
+        #outcomes[PID_COL] = outcomes[PID_COL].astype(int)
+##
+        # STEP 3 - Load outcomes with multi-task support
+        if isinstance(paths_cfg.get("outcomes", ""), list):
+            # multi-task learning: load multiple outcomes and concatenate into a single dataframe
+            outcomes = load_multitask_outcomes_prepare(paths_cfg, outcome_cfg)
+        else:
+            # single-task 
+            outcomes = pd.read_csv(paths_cfg.outcome)
+            outcomes[PID_COL] = outcomes[PID_COL].astype(int)
+##
 
        # --------------------
     # STEP 4 - Load tokenized data (ShardLoader)
@@ -187,32 +198,69 @@ class DatasetPreparer:
 
         # -------------------------
         # Loading and processing outcomes
+##
         logger.info("Handling outcomes")
+        if isinstance(paths_cfg.get("outcomes", ""), list):
+            binary_outcomes = get_multitask_binary_outcomes(
+                index_dates,
+                outcomes,
+                outcome_cfg.get("n_hours_start_follow_up", 0),
+                outcome_cfg.get("n_hours_end_follow_up", None),
+            )
+        else:
+            binary_outcomes = get_binary_outcomes(
+                index_dates,
+                outcomes,
+                outcome_cfg.get("n_hours_start_follow_up", 0),
+                outcome_cfg.get("n_hours_end_follow_up", None),
+            )
+        
+        if isinstance(binary_outcomes, pd.DataFrame):
+            multilabel_df = binary_outcomes.copy()
+            multilabel_df.index.name = PID_COL
+            multilabel_df = multilabel_df.reset_index()
+            multilabel_df.to_csv(
+                join(self.processed_dir, 'multilabel_outcomes.csv'),
+                index=False
+            )
+            logger.info(f"Multilabel outcomes saved: {multilabel_df.shape}")
+            logger.info(f"Positive per task:\n{multilabel_df.drop(PID_COL, axis=1).sum()}")
+            
+        if isinstance(binary_outcomes, pd.DataFrame):
+            print(binary_outcomes[binary_outcomes.sum(axis=1) > 0])
+        else:
+            print(f"Positive outcomes: {binary_outcomes.sum()}")
+##
+        #binary_outcomes = get_binary_outcomes(
+        #    index_dates,
+        #    outcomes,
+        #    outcome_cfg.get("n_hours_start_follow_up", 0),
+        #    outcome_cfg.get("n_hours_end_follow_up", None),
+        #)
 
-        binary_outcomes = get_binary_outcomes(
-            index_dates,
-            outcomes,
-            outcome_cfg.get("n_hours_start_follow_up", 0),
-            outcome_cfg.get("n_hours_end_follow_up", None),
-        )
-
-        logger.info("Assigning outcomes")
-        logger.info(f"Binary outcomes summary: {binary_outcomes.value_counts()}")
+       # log
+        if isinstance(binary_outcomes, pd.DataFrame):
+            logger.info(f"Binary outcomes summary:\n{binary_outcomes.sum()}")
+        else:
+            logger.info(f"Binary outcomes summary: {binary_outcomes.value_counts()}")
 
         if mode == "train":
-            # فقط بیماران دارای outcome را نگه داریم
             valid_pids = set(binary_outcomes.index)
             data.patients = [p for p in data.patients if p.pid in valid_pids]
-        logger.info(f"[Before Outcome Assignment] Patients in data: {len(data.patients)}")
-        logger.info(f"[Before Outcome Assignment] Binary outcomes: {len(binary_outcomes)} | Positive outcomes: {(binary_outcomes==1).sum()}")
 
+        logger.info(f"[Before Outcome Assignment] Patients in data: {len(data.patients)}")
+        if isinstance(binary_outcomes, pd.DataFrame):
+            logger.info(f"Positive outcomes per task:\n{binary_outcomes.sum()}")
+        else:
+            logger.info(f"Positive outcomes: {(binary_outcomes==1).sum()}")
+                
         data = data.assign_outcomes(binary_outcomes)
 
         # Align index_dates with data patients
         valid_pids = set(p.pid for p in data.patients)
         index_dates = index_dates[index_dates[PID_COL].isin(valid_pids)]
 
-        # بررسی اینکه چیزی از قلم نیفتاده
+      
         missing_pids = valid_pids - set(index_dates[PID_COL])
         if missing_pids:
             logger.warning(f"[Censoring] {len(missing_pids)} patients in data but missing from index_dates! Adding placeholder dates.")
@@ -439,3 +487,16 @@ class DatasetPreparer:
             raise ValueError("NaN values detected in censor dates")
 
         logger.info(f"Censoring validated for {len(patient_pids)} patients")
+
+
+##
+def load_multitask_outcomes_prepare(paths_cfg, outcome_cfg) -> pd.DataFrame:
+    """Load multiple outcomes and create binary labels for each."""
+    all_outcomes = []
+    for outcome_path in paths_cfg.outcomes:
+        outcome_name = outcome_path.split('/')[-1]
+        df = pd.read_csv(f"{outcome_path}/outcome.csv")
+        df[PID_COL] = df[PID_COL].astype(int)
+        df['outcome'] = outcome_name
+        all_outcomes.append(df)
+    return pd.concat(all_outcomes, ignore_index=True)

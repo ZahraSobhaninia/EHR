@@ -11,6 +11,7 @@ from corebehrt.modules.setup.config import Config, instantiate_class
 from corebehrt.modules.model.model import (
     CorebehrtForPretraining,
     CorebehrtForFineTuning,
+    CorebehrtForMultiTaskFineTuning,        
 )
 from corebehrt.modules.setup.loader import ModelLoader
 from corebehrt.modules.trainer.utils import get_sampler, get_loss_weight
@@ -55,9 +56,23 @@ class Initializer:
         if self.checkpoint:
             logger.info("Loading model from checkpoint")
             loss_weight = get_loss_weight(self.cfg, outcomes)
-            add_config = {**self.cfg.model, "pos_weight": loss_weight}
+            
+##
+            # multi-task or single-task
+            if self.cfg.get("mode", "single_task") == "multi_task":
+                model_class = CorebehrtForMultiTaskFineTuning
+                add_config = {
+                    **self.cfg.model,
+                    "tasks": self.cfg.get("tasks", []),
+                    "pos_weights": self.cfg.get("pos_weights", {}),
+                }
+            else:
+                model_class = CorebehrtForFineTuning
+                add_config = {**self.cfg.model, "pos_weight": loss_weight}
+            
+
             model = self.loader.load_model(
-                CorebehrtForFineTuning,
+                model_class,
                 checkpoint=self.checkpoint,
                 add_config=add_config,
             )

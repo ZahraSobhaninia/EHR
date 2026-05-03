@@ -45,3 +45,36 @@ def get_binary_outcomes(
     result.index_name = PID_COL
     result[has_outcome.index] = has_outcome
     return result.astype(int)
+
+##
+def get_multitask_binary_outcomes(
+    index_dates: pd.DataFrame,
+    outcomes: pd.DataFrame,  # 'outcome'
+    n_hours_start_follow_up: float = 0,
+    n_hours_end_follow_up: float = None,
+) -> pd.DataFrame:
+    """Get binary outcomes for each patient and each task.
+    
+    Returns:
+        DataFrame with PID index and one column per outcome task (0 or 1)
+    """
+    task_names = outcomes['outcome'].unique()
+    
+    result = pd.DataFrame(
+        0,
+        index=index_dates[PID_COL].unique(),
+        columns=task_names
+    )
+    
+    for task in task_names:
+        task_outcomes = outcomes[outcomes['outcome'] == task]
+        binary = get_binary_outcomes(
+            index_dates,
+            task_outcomes,
+            n_hours_start_follow_up,
+            n_hours_end_follow_up,
+        )
+        result[task] = binary
+    
+    return result
+

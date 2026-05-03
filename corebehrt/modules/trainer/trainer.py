@@ -483,21 +483,46 @@ class EHRTrainer:
         """Process results specifically for binary classification."""
         targets = torch.cat(targets)
         logits = torch.cat(logits)
-        batch = {"target": targets}
-        outputs = namedtuple("Outputs", ["logits"])(logits)
-        metrics = {}
-        for name, func in self.metrics.items():
-            v = func(outputs, batch)
-            self.log(f"{name}: {v}")
-            metrics[name] = v
-        save_curves(self.run_folder, logits, targets, epoch, mode)
-        save_metrics_to_csv(self.run_folder, metrics, epoch, mode)
-        save_curves(self.run_folder, logits, targets, BEST_MODEL_ID, mode)
-        save_metrics_to_csv(
-            self.run_folder, metrics, BEST_MODEL_ID, mode
-        )  # For compatibility / best model
-        save_predictions(self.run_folder, logits, targets, BEST_MODEL_ID, mode)
-        return metrics
+ ##   # multi-task or single-task
+        is_multitask = logits.dim() > 1 and logits.shape[1] > 1
+    
+        if is_multitask:
+            metrics = {}
+            task_names = self.cfg.get("tasks", [f"task_{i}" for i in range(logits.shape[1])])
+            for i, task in enumerate(task_names):
+                task_logits = logits[:, i]
+                task_targets = targets[:, i]
+                batch = {"target": task_targets}
+                outputs = namedtuple("Outputs", ["logits"])(task_logits)
+                for name, func in self.metrics.items():
+                    v = func(outputs, batch)
+                    metrics[f"{task}_{name}"] = v
+                    self.log(f"{task}_{name}: {v}")
+      
+            # for each task, save curves and predictions separately
+                save_curves(self.run_folder, task_logits, task_targets, epoch, f"{mode}_{task}")
+                save_curves(self.run_folder, task_logits, task_targets, BEST_MODEL_ID, f"{mode}_{task}")
+                save_predictions(self.run_folder, task_logits, task_targets, BEST_MODEL_ID, f"{mode}_{task}")
+            save_metrics_to_csv(self.run_folder, metrics, epoch, mode)
+            save_metrics_to_csv(self.run_folder, metrics, BEST_MODEL_ID, mode)   
+            return metrics
+
+
+        else:
+            # single-task    
+            batch = {"target": targets}
+            outputs = namedtuple("Outputs", ["logits"])(logits)
+            metrics = {}
+            for name, func in self.metrics.items():
+                v = func(outputs, batch)
+                metrics[name] = v
+            save_curves(self.run_folder, logits, targets, epoch, mode)
+            save_metrics_to_csv(self.run_folder, metrics, epoch, mode)
+            save_predictions(self.run_folder, logits, targets, BEST_MODEL_ID, mode)
+            save_curves(self.run_folder, logits, targets, BEST_MODEL_ID, mode)
+            save_metrics_to_csv(self.run_folder, metrics, BEST_MODEL_ID, mode)
+            save_predictions(self.run_folder, logits, targets, BEST_MODEL_ID, mode)
+            return metrics
 
     def get_dataloader(self, dataset, mode) -> DataLoader:
         """Returns a dataloader for the dataset"""

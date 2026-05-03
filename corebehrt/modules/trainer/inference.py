@@ -93,9 +93,23 @@ class EHRInferenceRunner(EHRTrainer):
                 logits.append(outputs.logits.float().detach().cpu())
                 targets.append(batch["target"].detach().cpu())
 
-        logits_tensor  = torch.cat(logits,  dim=0).view(-1)   # [N]
-        targets_tensor = torch.cat(targets, dim=0).view(-1)   # [N]
+        #logits_tensor  = torch.cat(logits,  dim=0).view(-1)   # [N]
+        #targets_tensor = torch.cat(targets, dim=0).view(-1)   # [N]
+        logits_cat = torch.cat(logits, dim=0)
+        print(f"-----DEBUG logits_cat shape: {logits_cat.shape}")
+        targets_cat = torch.cat(targets, dim=0)
+        if logits_cat.dim() == 3 and logits_cat.shape[-1] == 1:
+            logits_cat = logits_cat.squeeze(-1)
 
+        targets_cat = torch.cat(targets, dim=0)
+        if targets_cat.dim() == 3 and targets_cat.shape[-1] == 1:
+            targets_cat = targets_cat.squeeze(-1)
+        if logits_cat.dim() > 1 and logits_cat.shape[1] > 1:
+            logits_tensor = logits_cat    # [N, n_tasks]
+            targets_tensor = targets_cat  # [N, n_tasks]
+        else:
+            logits_tensor = logits_cat.view(-1)   # [N]
+            targets_tensor = targets_cat.view(-1)  # [N]
         if not return_embeddings:
             return logits_tensor, targets_tensor, None
 

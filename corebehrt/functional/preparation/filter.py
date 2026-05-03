@@ -52,6 +52,8 @@ def exclude_short_sequences(
 
 def _remove_last_sep_token(patient: PatientData) -> PatientData:
     """Remove the last single SEP token from the patient's data if it exists."""
+    if len(patient.concepts) == 0:  # ← این رو اضافه کن
+        return patient
     if patient.concepts[-1] == DEFAULT_VOCABULARY[SEP_TOKEN]:
         patient.concepts = patient.concepts[:-1]
         patient.abspos = patient.abspos[:-1]

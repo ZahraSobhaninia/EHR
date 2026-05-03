@@ -19,7 +19,7 @@ from corebehrt.modules.features.loader import ConceptLoader
 
 
 def select_cohort(
-    path_cfg, selection_cfg, index_date_cfg, test_ratio, logger
+    path_cfg, selection_cfg, index_date_cfg, test_ratio, logger, mode: str = "single_task" 
 ) -> Tuple[List[str], pd.Series, List[str], List[str]]:
     """
     Select cohort by applying multiple filtering steps.
@@ -53,7 +53,8 @@ def select_cohort(
     """
 
     logger.info("Loading data")
-    patients_info, outcomes, exposures, initial_pids, exclude_pids = load_data(path_cfg)
+    patients_info, outcomes, exposures, initial_pids, exclude_pids = load_data(path_cfg,
+    mode=mode)
 
     # Remove duplicate patient records (keep first occurrence)
     patients_info = patients_info.drop_duplicates(subset=PID_COL, keep="first")
@@ -144,16 +145,22 @@ def log_patient_num(logger, patients_info):
 
 def load_data(
     path_cfg,
+    mode: str = "single_task",  
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, List[str], List[str]]:
     """Load patient, outcomes, and exposures data."""
     patients_info = ConceptLoader.read_file(path_cfg.patients_info)
-    outcomes = ConceptLoader.read_file(path_cfg.outcome)
-
-    exposures = (
-        ConceptLoader.read_file(path_cfg.exposure)
-        if path_cfg.get("exposure", False)
-        else outcomes
-    )
+    ##
+    print(f"DEBUG: mode = {mode}")  
+    print(f"DEBUG: outcomes type = {type(path_cfg.outcomes)}")
+    if mode == "multi_task":
+        outcomes = load_multitask_outcomes(path_cfg)
+        # exposure از اولین outcome folder
+        first_path = path_cfg.outcomes[0]
+        exposures = ConceptLoader.read_file(f"{first_path}/exposure.csv")
+    else:
+        outcomes = ConceptLoader.read_file(path_cfg.outcome)
+        exposures = ConceptLoader.read_file((path_cfg.exposure)
+        )
 
     exposures = select_first_event(exposures, PID_COL, TIMESTAMP_COL)
 
@@ -166,3 +173,15 @@ def load_data(
     )
 
     return patients_info, outcomes, exposures, initial_pids, exclude_pids
+
+def load_multitask_outcomes(path_cfg) -> pd.DataFrame:
+    """Load multiple outcome files and create multi-label dataframe."""
+    
+    all_outcomes = []
+    for outcome_path in path_cfg.outcomes:  # هر item یه path کامله
+        outcome_name = outcome_path.split('/')[-1]  # اسم از آخر path
+        df = ConceptLoader.read_file(f"{outcome_path}/outcome.csv")
+        df['outcome'] = outcome_name
+        all_outcomes.append(df)
+    
+    return pd.concat(all_outcomes, ignore_index=True)

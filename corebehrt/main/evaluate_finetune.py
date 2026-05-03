@@ -40,17 +40,30 @@ def main_evaluate(config_path):
     test_pids = test_data.get_pids()
     folds = torch.load(join(cfg.paths.folds_dir, FOLDS_FILE), weights_only=False)
     check_for_overlap(folds, test_pids, logger)
+ 
     targets = test_data.get_outcomes()
     logger.info(f"Number of test patients: {len(test_pids)}")
-    logger.info(f"Number of test positive targets: {sum(targets)}")
+
+    is_multitask = isinstance(targets[0], dict) if targets else False
+    if is_multitask:
+        for task in cfg.get("tasks", []):
+            pos = sum(1 for t in targets if t.get(task, 0) == 1)
+            logger.info(f"Number of test positive targets for {task}: {pos}")
+    else:
+        logger.info(f"Number of test positive targets: {sum(targets)}")
 
     # Get predictions
-    combined_df = pd.DataFrame(
-        {
+    if is_multitask:
+        task_names = cfg.get("tasks", [])
+        combined_df = pd.DataFrame({"pid": test_pids})
+        for task in task_names:
+            combined_df[f"{task}_target"] = [t[task] for t in targets]
+    else:
+        combined_df = pd.DataFrame({
             "pid": test_pids,
             "target": targets,
-        }
-    )
+        })
+        
     if cfg.get("save_info", False):
         for k, v in cfg.save_info.items():
             func = instantiate_function(v)
@@ -65,7 +78,13 @@ def main_evaluate(config_path):
             logger=logger,
             fold=n_fold,
         )
-        combined_df[f"fold_{n_fold}_probas"] = probas
+        
+        if is_multitask:
+            task_names = cfg.get("tasks", [])
+            for i, task in enumerate(task_names):
+                combined_df[f"fold_{n_fold}_{task}_probas"] = probas[:, i]
+        else:
+            combined_df[f"fold_{n_fold}_probas"] = probas
         all_probas.append(probas)
 
         # Save embeddings if specified

@@ -1,0 +1,26 @@
+# evaluate_heldout_mt.yaml
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: multi_task
+
+tasks:
+  - Mortality
+  - ARF
+  - Bleed
+
+paths:
+  model: '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/outputs/model'
+  folds_dir: '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/outputs/prepared_data'
+  test_data_dir: '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/outputs/prepared_data_heldout'
+  predictions: '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/outputs/predictions_heldout'
+
+test_batch_size: 128
+return_embeddings: true
+
+metrics:
+  roc_auc:
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc:
+    _target_: sklearn.metrics.average_precision_score

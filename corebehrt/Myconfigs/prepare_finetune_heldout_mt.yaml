@@ -1,0 +1,30 @@
+# prepare_finetune_heldout_mt.yaml
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: multi_task
+
+paths:
+  features: '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/sample_data_holdout/features'
+  tokenized: '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/sample_data_holdout/tokenized'
+
+  outcomes:
+    - '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/sample_data_holdout/Mortality'
+    - '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/sample_data_holdout/ARF'
+    - '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/sample_data_holdout/Bleed'
+  outcome: 'outcome.csv'
+
+  cohort: '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/outputs/cohort_heldout'
+  prepared_data: '/Users/gkc492/Documents/PHDJourney/Projects/CoreBehrt_OOH/multi_task_learning/outputs/prepared_data_heldout'
+
+data:
+  type: "test"
+  truncation_len: 512
+  min_len: 2
+  test_modes: ["held_out"]
+
+outcome:
+  n_hours_censoring: 0
+  n_hours_start_follow_up: 0
+  n_hours_end_follow_up: 720

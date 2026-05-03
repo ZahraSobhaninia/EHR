@@ -33,6 +33,7 @@ def main_select_cohort(config_path: str):
         cfg.index_date,
         test_ratio=cfg.test_ratio,
         logger=logger,
+        mode=cfg.get("mode", "single_task"),
     )
     logger.info(f"[Cohort Result] ___Final cohort patient count: {len(pids)}")
     logger.info(f"[Cohort Result] Train+Val patients: {len(train_val_pids)}")

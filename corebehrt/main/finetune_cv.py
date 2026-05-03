@@ -45,16 +45,12 @@ def main_finetune(config_path):
     patients_path = join(cfg.paths.prepared_data, PREPARED_ALL_PATIENTS)
     logger.info(f"Loading patients from: {patients_path}")
     try:
-        loaded_data = torch.load(patients_path)
+        loaded_data = torch.load(patients_path, weights_only=False)
     except Exception as e:
       logger.exception(f"FAILED to load patients from: {patients_path}")
       raise
     data = PatientDataset(loaded_data)
     logger.info("Loaded PatientDataset: %d records", len(data))
-
-    loaded_data = torch.load(join(cfg.paths.prepared_data, PREPARED_ALL_PATIENTS))
-    data = PatientDataset(loaded_data)
-
     test_data = PatientDataset([])
 
     # Initialize test and train/val pid lists

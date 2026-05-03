@@ -36,7 +36,8 @@ def inference_fold(
         return_embeddings=return_embeddings
     )
     probas = torch.sigmoid(logits_tensor).numpy()
-
+    print(f"DEBUG logits shape: {logits_tensor.shape}")
+    print(f"DEBUG probas shape: {probas.shape}")
     return probas, embeddings_tensor
 
 
@@ -53,10 +54,22 @@ def compute_metrics(cfg, targets, all_probas, logger):
         return
 
     metrics = {k: instantiate_function(v) for k, v in cfg.metrics.items()}
+
+    is_multitask = isinstance(targets[0], dict) if targets else False
+    task_names = cfg.get("tasks", [])
     fold_metrics_list = []
 
     for n_fold, probas in enumerate(all_probas, start=1):
-        fold_metrics = {name: func(targets, probas) for name, func in metrics.items()}
+        if is_multitask:
+            fold_metrics = {}
+            for i, task in enumerate(task_names):
+                task_targets = [t[task] for t in targets]
+                task_probas = probas[:, i]
+                for name, func in metrics.items():
+                    fold_metrics[f"{task}_{name}"] = func(task_targets, task_probas)
+        else:
+            fold_metrics = {name: func(targets, probas) for name, func in metrics.items()}
+           
         fold_metrics["fold"] = f"fold_{n_fold}"
         fold_metrics_list.append(fold_metrics)
 

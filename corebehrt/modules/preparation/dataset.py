@@ -156,18 +156,31 @@ class PatientDataset:
         """
         
         missing_pids = 0
+        is_multitask = isinstance(outcomes, pd.DataFrame)
+
         for p in self.patients:
-            if p.pid in outcomes:
-                p.outcome = int(outcomes[p.pid])
+            if p.pid in outcomes.index:
+                if is_multitask:
+                    p.outcome = outcomes.loc[p.pid].to_dict()
+                else:
+                    p.outcome = int(outcomes[p.pid])
             else:
-                # Assign default outcome = 0 for patients with no outcome record (important for OOT!)
-                p.outcome = 0
+                if is_multitask:
+                    p.outcome = {col: 0 for col in outcomes.columns}
+                else:
+                    p.outcome = 0
                 missing_pids += 1
 
         logging.info(f"[assign_outcomes] Total patients: {len(self.patients)}")
         logging.info(f"[assign_outcomes] Patients with missing outcome (set to 0): {missing_pids}")
-        logging.info(f"[assign_outcomes] Patients with outcome=1: {sum(p.outcome for p in self.patients)}")
-        
+        if is_multitask:
+            for col in outcomes.columns:
+                pos = sum(1 for p in self.patients if p.outcome.get(col, 0) == 1)
+                logging.info(f"[assign_outcomes] Patients with {col}=1: {pos}")
+        else:
+            logging.info(f"[assign_outcomes] Patients with outcome=1: {sum(p.outcome for p in self.patients)}")
+
+
         return self
 
     @staticmethod
@@ -249,13 +262,19 @@ class BinaryOutcomeDataset(Dataset):
         attention_mask = torch.ones(
             len(patient.concepts), dtype=torch.long
         )  # Require attention mask for bi-gru head
+        ##
+        if isinstance(patient.outcome, dict):
+            target = torch.tensor(list(patient.outcome.values()), dtype=torch.float)
+        else:
+            target = torch.tensor(patient.outcome, dtype=torch.float)
+
         sample = {
             CONCEPT_FEAT: torch.tensor(patient.concepts, dtype=torch.long),
             ABSPOS_FEAT: torch.tensor(patient.abspos, dtype=torch.float),
             SEGMENT_FEAT: torch.tensor(patient.segments, dtype=torch.long),
             AGE_FEAT: torch.tensor(patient.ages, dtype=torch.float),
             ATTENTION_MASK: attention_mask,
-            TARGET: torch.tensor(patient.outcome, dtype=torch.float),
+            TARGET: target,
             ##
             "patient_id": torch.tensor(int(patient.pid), dtype=torch.long)
         }
