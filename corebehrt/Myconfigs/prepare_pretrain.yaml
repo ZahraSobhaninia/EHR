@@ -5,19 +5,19 @@ logging:
 paths:
 ## INPUTS
 
-  features: "azureml://datastores/researcher_data/paths/Zahra/032026/CoreBehrt_OOT/MD/0_CreateData/features"
-  tokenized: "azureml://datastores/researcher_data/paths/Zahra/032026/CoreBehrt_OOT/MD/0_CreateData/tokenized"
+  features: "azureml://datastores/researcher_data/paths/Zahra/032026/CoreBehrt_OOT/MDS/0_CreateData/features"
+  tokenized: "azureml://datastores/researcher_data/paths/Zahra/032026/CoreBehrt_OOT/MDS/0_CreateData/tokenized"
 
   # tokenized_file: ...
   # tokenized_pids: ...
 
 ## OUTPUTS
-  prepared_data: "researcher_data:Zahra/032026/CoreBehrt_OOT/MD/1_Pretrain/Data/" # Save model/outputs to this folder
+  prepared_data: "researcher_data:Zahra/052026/CoreBehrt_OOT/MDS/1_Pretrain/Data/" # Save model/outputs to this folder
   #runs: ./outputs/pretraining # Use for generating a new model folder
 
 data:
   type: "pretrain"
-  val_ratio: 0.2 # only used if predefined_splits is false
+  val_ratio: 0.1 # only used if predefined_splits is false
   truncation_len: 512
   min_len: 2
   predefined_splits: false

@@ -1,3 +1,5 @@
+import json
+from collections import Counter
 import logging
 import os
 from datetime import datetime
@@ -78,7 +80,7 @@ class DatasetPreparer:
 
         split_path = os.path.join(paths_cfg.tokenized, f"features_{mode}")
         if not os.path.exists(split_path) or len(glob.glob(os.path.join(split_path, "*.parquet"))) == 0:
-            logger.warning(f"⚠️ 'features_{mode}' not found or empty — using 'features_train' instead.")
+            logger.warning(f" 'features_{mode}' not found or empty — using 'features_train' instead.")
             mode = "train"    
         
     # --------------------
@@ -125,10 +127,6 @@ class DatasetPreparer:
 
         intersection_all = pids_tokenized & pids_index       # & pids_outcomes
 
-     #   فقط بیمارانی رو نگه می‌داره که:
-
-#هم در tokenized هستن
-#هم در index_dates هستن
 
         logger.info(f"[Finetune] Patients in ALL (tokenized ∩ outcomes ∩ index_dates): {len(intersection_all)}")
         logger.info(f"[Finetune] Only in tokenized: {len(pids_tokenized - intersection_all)}")
@@ -212,12 +210,11 @@ class DatasetPreparer:
         valid_pids = set(p.pid for p in data.patients)
         index_dates = index_dates[index_dates[PID_COL].isin(valid_pids)]
 
-        # بررسی اینکه چیزی از قلم نیفتاده
         missing_pids = valid_pids - set(index_dates[PID_COL])
         if missing_pids:
             logger.warning(f"[Censoring] {len(missing_pids)} patients in data but missing from index_dates! Adding placeholder dates.")
             
-            # اضافه کردن placeholder به index_dates
+        
             placeholder_df = pd.DataFrame({
                 PID_COL: list(missing_pids),
                 ABSPOS_COL: index_dates[ABSPOS_COL].max()  # یا هر عدد بزرگ مثل max(abspos)+1
@@ -233,19 +230,19 @@ class DatasetPreparer:
 
         censor_dates.index = censor_dates.index.astype(int)
 
-        # حذف بیمارانی که censor_date ندارند
+
         valid_censor_pids = set(censor_dates.index)
         initial_patient_count = len(data.patients)
         data.patients = [p for p in data.patients if int(p.pid) in valid_censor_pids]
         logger.info(f" [Censoring] Removed {initial_patient_count - len(data.patients)} patients without censor_date.")
-        # بررسی وجود pidهای بدون censor_date
+      
 
         remaining_pids = set([int(p.pid) for p in data.patients])
         missing_censor_pids = remaining_pids - valid_censor_pids
         if missing_censor_pids:
             logger.warning(f"❗ {len(missing_censor_pids)} patients still missing censor_date! Example: {list(missing_censor_pids)[:5]}")
         else:
-            logger.info("✅ All patients have valid censor_date.")
+            logger.info(" All patients have valid censor_date.")
 
         self._validate_censoring(data.patients, censor_dates, logger)
         ##zahra
@@ -308,6 +305,34 @@ class DatasetPreparer:
         logger.info(
             f"Max segment length: {max(max(patient.segments) for patient in data.patients)}"
         )
+##
+
+        finetune_stats = {
+            'summary': {
+                'total_patients': len(data.patients),
+                'positive_patients': sum(1 for p in data.patients if p.outcome == 1),
+                'negative_patients': sum(1 for p in data.patients if p.outcome == 0),
+                'positive_rate': round(sum(1 for p in data.patients if p.outcome == 1) / len(data.patients) * 100, 3),
+                'avg_sequence_length': round(sum(len(p.concepts) for p in data.patients) / len(data.patients), 2),
+                'max_sequence_length': max(len(p.concepts) for p in data.patients),
+                'min_sequence_length': min(len(p.concepts) for p in data.patients),
+                'vocab_size': len(self.vocab),
+            },
+            'per_patient': {
+                str(p.pid): {
+                    'seq_length': len(p.concepts),
+                    'unique_concepts': len(set(p.concepts)),
+                    'outcome': int(p.outcome)
+                }
+                for p in data.patients
+            }
+        }
+        
+        with open(join(self.processed_dir, 'finetune_stats.json'), 'w') as f:
+            json.dump(finetune_stats, f, indent=2)
+        logger.info(f"Saved finetune stats: {finetune_stats['summary']}")
+
+##
         # save
         os.makedirs(self.processed_dir, exist_ok=True)
         save_vocabulary(self.vocab, self.processed_dir)
@@ -362,7 +387,59 @@ class DatasetPreparer:
         logger.info(
             f"Max segment length: {max(max(patient.segments) for patient in data.patients)}"
         )
+##
+        # ===== Stats =====
 
+        # inverse vocabulary
+        inv_vocab = {v: k for k, v in self.vocab.items()}
+        
+        # Codes distribution
+        all_concepts = [c for p in data.patients for c in p.concepts]
+        type_counts = Counter()
+        code_counts = Counter()
+        
+        for concept_id in all_concepts:
+            code = inv_vocab.get(concept_id, 'UNK')
+            code_counts[code] += 1
+            if '/' in code:
+                prefix = code.split('/')[0]
+                type_counts[prefix] += 1
+            elif code.startswith('['):
+                type_counts['SPECIAL'] += 1
+            else:
+                type_counts['OTHER'] += 1
+        
+        total_codes = sum(type_counts.values())
+        
+        full_stats = {
+            'summary': {
+                'total_patients': len(data.patients),
+                'train_patients': int(len(data.patients) * 0.9),
+                'val_patients': int(len(data.patients) * 0.1),
+                'vocab_size': len(self.vocab),
+                'avg_sequence_length': round(sum(len(p.concepts) for p in data.patients) / len(data.patients), 2),
+                'max_sequence_length': max(len(p.concepts) for p in data.patients),
+                'min_sequence_length': min(len(p.concepts) for p in data.patients),
+            },
+            'code_type_distribution': {
+                'counts': dict(type_counts),
+                'percentages': {k: round(v/total_codes*100, 2) for k, v in type_counts.items()}
+            },
+            'top_100_codes': dict(code_counts.most_common(100)),
+            'per_patient': {
+                str(p.pid): {
+                    'seq_length': len(p.concepts),
+                    'unique_concepts': len(set(p.concepts))
+                }
+                for p in data.patients
+            }
+        }
+        
+        os.makedirs(self.processed_dir, exist_ok=True)
+        with open(join(self.processed_dir, 'dataset_stats.json'), 'w') as f:
+            json.dump(full_stats, f, indent=2)
+        logger.info(f"Saved dataset stats for {len(data.patients)} patients")
+##
         # Save
         os.makedirs(self.processed_dir, exist_ok=True)
         save_vocabulary(self.vocab, self.processed_dir)

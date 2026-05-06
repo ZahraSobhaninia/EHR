@@ -4,14 +4,14 @@ logging:
 
 paths:
 ## INPUTS
-  prepared_data: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/Mortality/Data/Finetunedata"
+  prepared_data: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/ARF/Data/Finetunedata"
   #./outputs/finetuning/processed_data/
   pretrain_model: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/1_Pretrain/Model"
   
   # restart_model: ... # Use for restarting from checkpoint
       
 ## OUTPUTS
-  model: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/Mortality/Model_BCE"  
+  model: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/ARF/Model_focalloss5"  
 
 
   #./outputs/finetuning # Save model/outputs to this folder
@@ -33,22 +33,22 @@ trainer_args:
   task: finetune
     
     
-  loss_function: null
+  #loss_function: null
 
-  #loss_function:
-  #  _target_: corebehrt.modules.trainer.losses.FocalLoss
-  #  alpha: 0.75
-  #  gamma: 2.0
-  #  use_pos_weight: false
+  loss_function:
+    _target_: corebehrt.modules.trainer.losses.FocalLoss
+    alpha: 0.99  # 60/32k
+    gamma: 2.0   #2
+    use_pos_weight: true #false
     
        
-  sampler_function: 
-    _target_: corebehrt.modules.trainer.utils.Sampling.effective_n_samples 
+ # sampler_function: 
+ #   _target_: corebehrt.modules.trainer.utils.Sampling.effective_n_samples 
     #function to calculate sample weights. ----Possible options: inverse_sqrt and effective_n_samples
     #_target_: corebehrt.modules.trainer.utils.Sampling.inverse_sqrt    
    
-  loss_weight_function: 
-    _target_: corebehrt.modules.trainer.utils.PositiveWeight.effective_n_samples 
+ # loss_weight_function: 
+ #   _target_: corebehrt.modules.trainer.utils.PositiveWeight.effective_n_samples 
     # function to calculate positive weights. Possible options: sqrt and effective_n_samples
 
   batch_size: 64  #128
@@ -61,7 +61,7 @@ trainer_args:
     clip_value: 1     # 0.25 
   shuffle: true
   checkpoint_frequency: 1
-  early_stopping: 10           #4 for Mor      
+  early_stopping: 15           #4 for Mor      
   stopping_criterion: roc_auc   #pr_auc   
   
 
@@ -69,7 +69,7 @@ trainer_args:
   n_layers_to_freeze: 4
   unfreeze_on_plateau: true  #true  # unfreeze all layers if the performance is less than plateau_threshold 
   #unfreeze_at_epoch: 8   #10 # if unfrezze_on_plateau is true, whichever condition is met first
-  plateau_threshold: 0.003 
+  plateau_threshold: 0.001   #0.002 
   reset_patience_after_unfreeze: true # reset early stopping counter after unfreezing
 
 optimizer:
@@ -79,8 +79,8 @@ optimizer:
 
 scheduler:
   _target_: transformers.get_linear_schedule_with_warmup
-  num_warmup_steps: 400 
-  num_training_steps: 6000  #16320 #5840
+  num_training_steps: 7000  # واقعی
+  num_warmup_steps: 700     # 10% از کل  #16320 #5840
 #steps_per_epoch = 52212 / 512 ≈ 102
 #102 × 40 ≈ 4080
 

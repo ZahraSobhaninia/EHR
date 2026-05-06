@@ -4,17 +4,14 @@ logging:
 
 paths:
 ## INPUTS
-  #features: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/0_CreateData/features'
-  #tokenized: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/0_CreateData/tokenized'
-
-   
-  #cohort: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/3_Holdout/Mortality/Data/SelectCohort"
-  
-  #outcomes: 'researcher_data:Zahra/032026/CoreBehrt_OOT/CreateOutcome_Holdout/Mortality'
+  features: "dummy"
+  tokenized: "dummy"
+  cohort: "dummy"
+  outcomes: "dummy"
   outcome: outcome.csv
 
 ## OUTPUTS
-  prepared_data: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/3_Holdout/Mortality/Data/Holdout_Data"     # Save model/outputs to this folder
+  prepared_data: "researcher_data:Zahra/032026/CoreBehrt_OOT/MD/3_Holdout/Mortality/Data/Holdout_Data"     # Save model/outputs to this folder
   #runs: ./outputs/pretraining # Use for generating a new model folder
   
 

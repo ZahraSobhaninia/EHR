@@ -1,0 +1,35 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+## INPUTS
+  prepared_data: "dummy"  # "researcher_data:Zahra/032026/CoreBehrt_OOT/MD/2_Finetune/Mortality/Data/Finetunedata"  #./outputs/finetuning/processed_data/
+      
+## OUTPUTS
+  model: "researcher_data:Zahra/032026/Xgboost_OOT/MDPS/ARF/Train"       # Save model/outputs to this folder  
+
+
+model:
+  objective: binary:logistic
+  eval_metric: auc
+  max_depth: 1
+  learning_rate: 0.05
+  subsample: 0.8        # از 0.5 — variance کمتر بین fold ها
+  colsample_bytree: 0.8 # از 0.5
+  min_child_weight: 150  # همین بمونه — دقت رو پایین نگه میداره
+  gamma: 15              # همین بمونه
+  seed: 42
+  scale_pos_weight: 50
+  tree_method: 'hist'
+  max_leaves: 15        # از 4 — curve صاف‌تر
+trainer_args:
+  num_boost_round: 150  # از 20 — مهم‌ترین تغییر برای curve
+  early_stopping_rounds: 15
+  verbose_eval: 10
+
+metrics:
+  roc_auc: 
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc: 
+    _target_: sklearn.metrics.average_precision_score  

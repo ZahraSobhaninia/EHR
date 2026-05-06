@@ -11,6 +11,7 @@ python -m corebehrt.azure pipeline FINETUNE_HOLDOUT \
   Users/zahra.sobhaninia/MODELS/Corebehrt_OOT/corebehrt/Myconfigs
 
 
+
   python -m corebehrt.azure pipeline FINETUNE \
   --experiment "finetune-Mortality-MDP-OOT" \
   --features "researcher_data:Zahra/032026/CoreBehrt_OOT/MDP/0_CreateData/features" \
@@ -21,29 +22,24 @@ python -m corebehrt.azure pipeline FINETUNE_HOLDOUT \
   BigStorageCPU \
   /mnt/batch/tasks/shared/LS_root/mounts/clusters/zahracpu/code/Users/zahra.sobhaninia/MODELS/Corebehrt_OOT/corebehrt/Myconfigs
 
-python -m corebehrt.azure pipeline EVAL_ONLY \
-  --experiment "eval-Mortality-MDPS-OOT" \
-  --features "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/0_CreateData/features" \
-  --tokenized "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/0_CreateData/tokenized" \
-  --outcomes "researcher_data:Zahra/032026/CoreBehrt_OOT/CreateOutcome_Finetune/Mortality" \
-  --model "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/Mortality/Model_Focal" \
-  -cp evaluate_finetune=GPU-dedicated \
-  BigStorageCPU \
-  /mnt/batch/tasks/shared/LS_root/mounts/clusters/zahracpu/code/Users/zahra.sobhaninia/MODELS/Corebehrt_OOT/corebehrt/Myconfigs
 
 
+eval_only:
 python -m corebehrt.azure pipeline eval_only \
   --experiment "eval-Mortality-MDPS-OOT" \
   --features "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/0_CreateData/features" \
   --tokenized "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/0_CreateData/tokenized" \
-  --outcomes "researcher_data:Zahra/032026/CoreBehrt_OOT/CreateOutcome_Finetune/Mortality" \
-  --model "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/Mortality/Model_Focal" \
-  -cp evaluate_finetune=GPU-dedicated \
+  --outcomes "researcher_data:Zahra/032026/CoreBehrt_OOT/CreateOutcome_Holdout/Mortality" \
+  --model "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/Mortality/Model" \
+  --folds_dir "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/Mortality/Data/Finetunedata" \
+  -cp evaluate_finetune=GPU-A100-small \
   BigStorageCPU \
   /mnt/batch/tasks/shared/LS_root/mounts/clusters/zahracpu/code/Users/zahra.sobhaninia/MODELS/Corebehrt_OOT/corebehrt/Myconfigs
-  
 
-  
+
+
+GPU-A100-Single
+  GPU-A100-small
   BigStorageCPU
 BigStorageCPU page
 

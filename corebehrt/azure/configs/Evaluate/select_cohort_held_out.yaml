@@ -5,16 +5,16 @@ logging:
 
 paths:
   ### Inputs
-  #features: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/0_CreateData/features'
+  features: "dummy"
     
   
  # initial_pids: 'researcher_data:Zahra/CoreBehrt_OOT/MDP/0_CreateData/811/tokenized/pids_held_out.pt'   # Initial patients to select from [list of pids] (optional)
-  #outcomes: 'researcher_data:Zahra/032026/CoreBehrt_OOT/CreateOutcome_Holdout/Mortality'
+  outcomes: "dummy"
   exposure: exposure.csv # Exposure, optional, set to outcome if not provided. For multiple exposures, create a joint exposure file.
   outcome: outcome.csv # Outcome
  
   ### Outputs
-  cohort: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/3_Holdout/Mortality/Data/SelectCohort"
+  cohort: "researcher_data:Zahra/032026/CoreBehrt_OOT/MD/3_Holdout/Mortality/Data/SelectCohort"
 
 
 selection:

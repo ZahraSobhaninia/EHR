@@ -3,17 +3,17 @@ logging:
   path: ./outputs/logs
 
 paths:
- # model: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/M/Model"  
-    
-           
- # folds_dir: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/ARF/Data/Finetunedata"    # "researcher_data:Zahra/CoreBehrt/MDP/3_Finetune/ARF/Data/FinetuneData/811"     #Finetune Data
+  model: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/ARF/Model_focalloss4" 
+  
+  folds_dir: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/2_Finetune/ARF/Data/Finetunedata"    
+  # "researcher_data:Zahra/CoreBehrt/MDP/3_Finetune/ARF/Data/FinetuneData/811"     #Finetune Data
 
 
- # test_data_dir:  "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/3_Holdout/ARF/Data/Holdout_Data"   #"researcher_data:Zahra/CoreBehrt/MDP/4_Evaluate/ARF/Data/Heldout_Data/811"  
+  test_data_dir:  "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/3_Holdout/ARF/Data/Holdout_Data"   #"researcher_data:Zahra/CoreBehrt/MDP/4_Evaluate/ARF/Data/Heldout_Data/811"  
 
   run_name: "evaluate"
 
-  predictions: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/3_Holdout/Mortality/Predictions"
+  predictions: "researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/3_Holdout/ARF/Predictions_4"
 
   
 

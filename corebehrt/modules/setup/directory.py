@@ -325,13 +325,24 @@ class DirectoryPreparer:
         ##   Files outcome and exposure must be set.
         ##   If outcomes (directory) is set, it is added
         ##   as path-prefix to outcome and exposure
-        if outcomes := self.cfg.paths.get("outcomes", False):
-            self.cfg.paths.outcome = join(outcomes, self.cfg.paths.get("outcome", ""))
-            if exposure := self.cfg.paths.get("exposure", False):
-                self.cfg.paths.exposure = join(outcomes, exposure)
-        self.check_file("outcome")
-        if self.cfg.paths.get("exposure", False):
-            self.check_file("exposure")
+    #    if outcomes := self.cfg.paths.get("outcomes", False):
+    #        self.cfg.paths.outcome = join(outcomes, self.cfg.paths.get("outcome", ""))
+    #        if exposure := self.cfg.paths.get("exposure", False):
+    #            self.cfg.paths.exposure = join(outcomes, exposure)
+
+    #    self.check_file("outcome")
+    #    if self.cfg.paths.get("exposure", False):
+    #        self.check_file("exposure")
+##
+        mode = self.cfg.get("mode", "single_task")
+        if mode != "multi_task":
+            if outcomes := self.cfg.paths.get("outcomes", False):
+                self.cfg.paths.outcome = join(outcomes, self.cfg.paths.get("outcome", ""))
+                if exposure := self.cfg.paths.get("exposure", False):
+                    self.cfg.paths.exposure = join(outcomes, exposure)
+            self.check_file("outcome")
+            if self.cfg.paths.get("exposure", False):
+                self.check_file("exposure")
 
         # Initial pids is optional.
         if self.cfg.paths.get("initial_pids", False):
@@ -364,13 +375,19 @@ class DirectoryPreparer:
         self.check_directory("cohort")
 
         # If "outcome" is set, check that it exists.
-        if outcome := self.cfg.paths.get("outcome", False):
-            # If "outcomes" is also set, use as prefix
-            if outcomes := self.cfg.paths.get("outcomes", False):
-                self.cfg.paths.outcome = join(outcomes, outcome)
-
-            self.check_file("outcome")
-
+      #   if outcome := self.cfg.paths.get("outcome", False):
+        #     # If "outcomes" is also set, use as prefix
+      #       if outcomes := self.cfg.paths.get("outcomes", False):
+        #         self.cfg.paths.outcome = join(outcomes, outcome)
+        #     self.check_file("outcome")
+ # #
+        mode = self.cfg.get("mode", "single_task")
+        if mode != "multi_task":
+            if outcome := self.cfg.paths.get("outcome", False):
+                if outcomes := self.cfg.paths.get("outcomes", False):
+                    self.cfg.paths.outcome = join(outcomes, outcome)
+                self.check_file("outcome")
+                
         self.create_directory("prepared_data", clear=True)
         if name is None:
             self.write_config("prepared_data", name=PREPARE_FINETUNE_CFG)
