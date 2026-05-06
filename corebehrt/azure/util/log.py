@@ -111,17 +111,27 @@ def log_metric(key: str, *args, **kwargs):
         run, prefix = get_run_and_prefix()
         mlflow.log_metric(prefix + key, *args, run_id=run.info.run_id, **kwargs)
 
+##
+#def log_metrics(key: str, *args, **kwargs):
+#    """
+#    Log multiple metrics
 
-def log_metrics(key: str, *args, **kwargs):
-    """
-    Log multiple metrics
+#    :param metrics: dict of metrics.
+#    :param step: Step for the metric (used for plotting graphs).
+#    """
+#    if is_mlflow_available():
+#        run, prefix = get_run_and_prefix()
+#        mlflow.log_metrics(prefix + key, *args, run_id=run.info.run_id, **kwargs)
 
-    :param metrics: dict of metrics.
-    :param step: Step for the metric (used for plotting graphs).
-    """
+def log_metrics(metrics: dict, prefix: str = ""):
     if is_mlflow_available():
-        run, prefix = get_run_and_prefix()
-        mlflow.log_metrics(prefix + key, *args, run_id=run.info.run_id, **kwargs)
+        run, global_prefix = get_run_and_prefix()
+        for key, value in metrics.items():
+            mlflow.log_metric(
+                global_prefix + prefix + str(key),
+                float(value),
+                run_id=run.info.run_id
+            )
 
 
 def log_param(key: str, *args, **kwargs):

@@ -6,7 +6,6 @@ from torch.utils.data import WeightedRandomSampler
 
 from corebehrt.modules.setup.config import instantiate_function
 
-
 def get_sampler(cfg, outcomes: List[int]) -> Optional[WeightedRandomSampler]:
     """Get sampler for training data.
     If sampler_function is false or undefined, then no sampler is used.
@@ -84,6 +83,20 @@ class Sampling:
 
         # Calculate weights for each sample
         return [class_probs[outcome] / labels[outcome] for outcome in outcomes]
+
+        
+    @staticmethod
+    def inverse(outcomes: List[int]) -> List[float]:
+        labels = compute_labels(outcomes)
+        weights = 1 / labels
+        return [weights[label] for label in outcomes]
+
+    @staticmethod
+    def smoothed_inverse(outcomes: List[int], epsilon: float = 1e-2) -> List[float]:
+        labels = compute_labels(outcomes)
+        weights = 1 / (labels + epsilon)
+        return [weights[label] for label in outcomes]
+
 
 
 def get_loss_weight(cfg, outcomes: List[int]) -> Optional[List[float]]:
@@ -173,3 +186,5 @@ def is_plateau(
 
     # We consider it a plateau if the relative improvement is less than the threshold
     return relative_improvement < plateau_threshold
+
+

@@ -1,0 +1,24 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+  model: "researcher_data:Zahra/022026/CoreBehrt_CV/MDPS/2_Finetune/PRI/Model2"  
+  folds_dir: "researcher_data:Zahra/022026/CoreBehrt_CV/MDPS/2_Finetune/PRI/Data/Processed_data" 
+  test_data_dir: "researcher_data:Zahra/022026/CoreBehrt_CV/MDPS/3_Heldout/PRI/Data/Processed_data" 
+  run_name: "evaluate"
+  predictions: "researcher_data:Zahra/022026/CoreBehrt_CV/MDPS/3_Heldout/PRI/Evaluation2" 
+
+test_batch_size: 128
+
+return_embeddings: True
+
+metrics:
+  roc_auc: 
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc: 
+    _target_: sklearn.metrics.average_precision_score
+
+save_info: 
+  sequence_length: 
+    _target_: corebehrt.main.helper.evaluate_finetune.get_sequence_length

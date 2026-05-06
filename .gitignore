@@ -14,3 +14,6 @@ corebehrt/main/create_data_profiling.py
 **tmp**
 linux_install/
 .DS_Store
+022026-results/
+.ipynb_aml_checkpoints/
+*.ipynb

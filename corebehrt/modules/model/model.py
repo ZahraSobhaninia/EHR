@@ -184,15 +184,30 @@ class CorebehrtForFineTuning(CorebehrtEncoder):
     Adds a binary classification head (BCEWithLogits) on top of sequence outputs.
     """
 
-    def __init__(self, config):
-        super().__init__(config)
-        if getattr(config, "pos_weight", None):
-            pos_weight = torch.tensor(config.pos_weight)
-        else:
-            pos_weight = None
+    #def __init__(self, config):
+    #    super().__init__(config)
+    #    if getattr(config, "pos_weight", None):
+    #        pos_weight = torch.tensor(config.pos_weight)
+    #    else:
+    #        pos_weight = None
 
-        self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    #    self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    #    self.cls = FineTuneHead(hidden_size=config.hidden_size)
+    
+    def __init__(self, config, loss_function=None):
+        super().__init__(config)
         self.cls = FineTuneHead(hidden_size=config.hidden_size)
+
+        if loss_function:
+            self.loss_fct = loss_function
+        else:
+            pos_weight = (
+                torch.tensor(config.pos_weight)
+                if getattr(config, "pos_weight", None)
+                else None
+            )
+            self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    ###
 
     def forward(self, batch: dict, **kwargs):
         """

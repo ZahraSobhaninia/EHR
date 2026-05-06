@@ -154,11 +154,28 @@ def create_background(concepts: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFram
     concepts = concepts.copy()
 
     # Extract birthdates from DOB rows
-    dob_rows = concepts[concepts[CONCEPT_COL] == BIRTH_CODE]
+  #  dob_rows = concepts[concepts[CONCEPT_COL] == BIRTH_CODE]
+    dob_rows = concepts[
+    (concepts[CONCEPT_COL] == BIRTH_CODE) &
+    (concepts[TIMESTAMP_COL].notna())]
+
     birthdates = dict(zip(dob_rows[PID_COL], dob_rows[TIMESTAMP_COL]))
     concepts[BIRTHDATE_COL] = concepts[PID_COL].map(birthdates)
+## ------
+    missing_mask = concepts[BIRTHDATE_COL].isna()
+
+    num_patients_missing_dob = concepts.loc[missing_mask, PID_COL].nunique()
+    num_total_patients = concepts[PID_COL].nunique()
+
+    print(
+        f"[INFO] Patients without DOB: "
+        f"{num_patients_missing_dob} / {num_total_patients} "
+        f"({num_patients_missing_dob / num_total_patients:.2%})"
+    )
+
     if concepts[BIRTHDATE_COL].isna().any():
-        raise ValueError("Some patients have no DOB")
+        print("[WARN] Continuing despite missing DOB")
+       # raise ValueError("Some patients have no DOB")
 
     # Use boolean masking instead of index-based selection for background rows
     bg_mask = concepts[TIMESTAMP_COL].isna()

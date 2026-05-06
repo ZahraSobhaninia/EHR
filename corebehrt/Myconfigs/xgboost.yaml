@@ -1,0 +1,38 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+## INPUTS
+  prepared_data: "researcher_data:Zahra/022026/CoreBehrt_CV/MDP/2_Finetune/Mortality/Data/Processed_data"  #./outputs/finetuning/processed_data/
+      
+## OUTPUTS
+  model: "researcher_data:Zahra/022026/Xgboost_CV/MDP/Mortality/Train2"       # Save model/outputs to this folder  
+
+model:
+  objective: binary:logistic
+  eval_metric: auc
+  max_depth: 4
+  learning_rate: 0.1
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 1
+  gamma: 0
+  seed: 42
+  #n_estimators: 1000
+  scale_pos_weight: 50
+  tree_method: 'hist'  # Use histogram-based algorithm for better performance
+  grow_policy: 'lossguide'  # Grow tree based on loss reduction
+  max_bin: 256  # Number of bins for histogram
+  max_leaves: 120  # Maximum number of leaves in a tree
+
+trainer_args:
+  num_boost_round: 500
+  early_stopping_rounds: 25
+  verbose_eval: 10
+
+metrics:
+  roc_auc: 
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc: 
+    _target_: sklearn.metrics.average_precision_score  

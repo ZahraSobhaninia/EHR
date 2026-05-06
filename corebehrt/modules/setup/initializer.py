@@ -52,15 +52,40 @@ class Initializer:
         return model
 
     def initialize_finetune_model(self, outcomes):
+
+        loss_cfg = self.cfg.trainer_args.get("loss_function")
+        loss_fn = None
+        print("loss_cfg:", loss_cfg)
+
+        if loss_cfg:
+            if not hasattr(loss_cfg, "_target_"):
+                raise ValueError(
+                    f"`loss_function` config is missing _target_: {loss_cfg}"
+                )
+           
+            if getattr(loss_cfg, "use_pos_weight", False):
+                loss_weight = get_loss_weight(self.cfg, outcomes)
+                loss_cfg.pos_weight = loss_weight
+
+       
+            if hasattr(loss_cfg, "use_pos_weight"):
+                del loss_cfg.use_pos_weight
+
+            loss_fn = instantiate_class(loss_cfg)
+
         if self.checkpoint:
             logger.info("Loading model from checkpoint")
-            loss_weight = get_loss_weight(self.cfg, outcomes)
-            add_config = {**self.cfg.model, "pos_weight": loss_weight}
+            #loss_weight = get_loss_weight(self.cfg, outcomes)
+            #add_config = {**self.cfg.model, "pos_weight": loss_weight}
             model = self.loader.load_model(
                 CorebehrtForFineTuning,
                 checkpoint=self.checkpoint,
-                add_config=add_config,
             )
+                #add_config=add_config,
+            
+            if loss_fn is not None:
+                model.loss_fct = loss_fn
+
             model.to(self.device)
             return model
         else:

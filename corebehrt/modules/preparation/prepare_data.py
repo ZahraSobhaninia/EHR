@@ -185,26 +185,55 @@ class DatasetPreparer:
             patient_info_path=None,
         )
         patient_list = []
+        ###
+        total_before_cutoff = 0
+        total_after_cutoff = 0
+        total_before_trunc = 0
+        total_after_trunc = 0
+        ####
         for df, _ in tqdm(
             loader(), desc="Batch Process Data", file=TqdmToLogger(logger)
         ):
             if pids is not None:
                 df = filter_df_by_pids(df, pids)
             df = df.set_index(PID_COL, drop=True)
+            #BEFORE CUTOFF 
+            total_before_cutoff += df.index.nunique()
 
             if data_cfg.get("cutoff_date"):
                 df = self._cutoff_data(df, data_cfg.cutoff_date)
+            total_after_cutoff += df.index.nunique()
+
+            ## BEFORE TRUNC 
+            total_before_trunc += df.index.nunique()
+
             df = self._truncate(df, self.vocab, data_cfg.truncation_len)
+            total_after_trunc += df.index.nunique()
+
             df = df.reset_index(drop=False)
             self._check_sorted(df)
             batch_patient_list = dataframe_to_patient_list(df)
             patient_list.extend(batch_patient_list)
+##
+        logger.info("========== PREMEDS FILTERING STATS ==========")
+        logger.info(f"Patients before cutoff_date: {total_before_cutoff}")
+        logger.info(f"Patients after cutoff_date:  {total_after_cutoff}")
+        logger.info(f"Removed by cutoff_date:       {total_before_cutoff - total_after_cutoff}")
 
-        logger.info(f"Number of patients: {len(patient_list)}")
+        logger.info(f"Patients before truncation:  {total_before_trunc}")
+        logger.info(f"Patients after truncation:   {total_after_trunc}")
+        logger.info(f"Removed by truncation:       {total_before_trunc - total_after_trunc}")
+
+        logger.info(f"Patients before min_len:     {len(patient_list)}")
+
+##
         data = PatientDataset(patients=patient_list)
-
         logger.info("Excluding short sequences")
         background_length = get_background_length(data, self.vocab)
+##
+        min_len_threshold = data_cfg.get("min_len", 0) + background_length
+        before_min_len = len(data.patients)
+##
         data.patients = exclude_short_sequences(
             data.patients,
             data_cfg.get("min_len", 0) + background_length,
@@ -212,6 +241,12 @@ class DatasetPreparer:
         logger.info(
             f"Number of patients after excluding short sequences: {len(data.patients)}"
         )
+##
+        after_min_len = len(data.patients)
+        logger.info(f"min_len threshold (incl. background): {min_len_threshold}")
+        logger.info(f"Patients after min_len filter: {after_min_len}")
+        logger.info(f"Removed by min_len:            {before_min_len - after_min_len}")
+##
 
         # Normalize segments
         data.patients = data.process_in_parallel(normalize_segments_for_patient)
