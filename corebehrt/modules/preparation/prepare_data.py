@@ -98,11 +98,9 @@ class DatasetPreparer:
         #outcomes[PID_COL] = outcomes[PID_COL].astype(int)
 ##
         # STEP 3 - Load outcomes with multi-task support
-        if isinstance(paths_cfg.get("outcomes", ""), list):
-            # multi-task learning: load multiple outcomes and concatenate into a single dataframe
+        if paths_cfg.get("mode", "single_task") == "multi_task" or self.cfg.get("mode", "single_task") == "multi_task":
             outcomes = load_multitask_outcomes_prepare(paths_cfg, outcome_cfg)
         else:
-            # single-task 
             outcomes = pd.read_csv(paths_cfg.outcome)
             outcomes[PID_COL] = outcomes[PID_COL].astype(int)
 ##
@@ -200,7 +198,7 @@ class DatasetPreparer:
         # Loading and processing outcomes
 ##
         logger.info("Handling outcomes")
-        if isinstance(paths_cfg.get("outcomes", ""), list):
+        if self.cfg.get("mode", "single_task") == "multi_task":
             binary_outcomes = get_multitask_binary_outcomes(
                 index_dates,
                 outcomes,
@@ -491,11 +489,11 @@ class DatasetPreparer:
 
 ##
 def load_multitask_outcomes_prepare(paths_cfg, outcome_cfg) -> pd.DataFrame:
-    """Load multiple outcomes and create binary labels for each."""
     all_outcomes = []
-    for outcome_path in paths_cfg.outcomes:
-        outcome_name = outcome_path.split('/')[-1]
-        df = pd.read_csv(f"{outcome_path}/outcome.csv")
+    outcome_names = paths_cfg.get("outcome_names", os.listdir(paths_cfg.outcomes))
+    for outcome_name in outcome_names:
+        outcome_path = os.path.join(paths_cfg.outcomes, outcome_name)
+        df = pd.read_csv(os.path.join(outcome_path, "outcome.csv"))
         df[PID_COL] = df[PID_COL].astype(int)
         df['outcome'] = outcome_name
         all_outcomes.append(df)

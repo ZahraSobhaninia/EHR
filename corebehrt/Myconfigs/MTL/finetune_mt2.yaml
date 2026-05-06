@@ -1,0 +1,83 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+mode: multi_task
+tasks:
+  - Mortality
+  - ARF
+  - Bleed
+
+pos_weights:
+  Mortality: 50
+  ARF: 100
+  Bleed: 10
+
+paths:
+  prepared_data: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/MLT_MAB/2_Finetune/Data/PrepareData'
+  pretrain_model: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/1_Pretrain/Model'
+  model: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/MLT_MAB/2_Finetune/Model_focal_v2'
+
+evaluate: false
+
+model:
+  cls:
+    _target_: ehr2vec.model.heads.ClassifierGRU
+    bidirectional: true
+
+trainer_args:
+  save_representations: true
+  save_labels: true
+  representation_types: ["mean", "cls", "max", "last"]
+  task: finetune
+
+  loss_function:
+    _target_: corebehrt.modules.trainer.losses.FocalLoss
+    alpha: 0.95
+    gamma: 2.0
+    use_pos_weight: true   # ← عوض شد به true تا pos_weights اثر کنه!
+
+  batch_size: 64
+  val_batch_size: 256
+  effective_batch_size: 512
+
+  epochs: 30              # ← از 20 به 30
+  info: true
+  gradient_clip:
+    clip_value: 1
+  shuffle: true
+  checkpoint_frequency: 1
+  early_stopping: 15      # ← از 10 به 15 چون epochs بیشتر شد
+  stopping_criterion: roc_auc   # ← از pr_auc  عوض شد
+
+  n_layers_to_freeze: 6   # ← از 4 به 6 تا collapse نکنه
+  unfreeze_on_plateau: true
+  plateau_threshold: 0.001  # ← از 0.002 کمتر شد
+  reset_patience_after_unfreeze: true
+
+optimizer:
+  lr: 5e-6               # ← از 1e-5 کمتر شد
+  eps: 1e-8
+  weight_decay: 0.01
+
+scheduler:
+  _target_: transformers.get_linear_schedule_with_warmup
+  num_warmup_steps: 600   # ← از 400 بیشتر شد
+  num_training_steps: 10000  # ← از 6000 بیشتر شد
+
+metrics:
+  roc_auc:
+    _target_: corebehrt.modules.monitoring.metrics.ROC_AUC
+  pr_auc:
+    _target_: corebehrt.modules.monitoring.metrics.PR_AUC
+  precentage_positives:
+    _target_: corebehrt.modules.monitoring.metrics.Percentage_Positives
+  mean_probability:
+    _target_: corebehrt.modules.monitoring.metrics.Mean_Probability
+  true_positives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Positives
+  true_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Negatives
+  false_positives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Positives
+  false_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Negatives

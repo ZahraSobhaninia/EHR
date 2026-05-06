@@ -24,3 +24,6 @@ sample_data/
 Mypipeline/
 __pycache__/
 *.pyc
+__pycache__/
+Results_032026/
+*.pyc

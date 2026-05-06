@@ -1,5 +1,5 @@
 from typing import List, Tuple
-
+import os
 import pandas as pd
 import torch
 import logging
@@ -155,8 +155,10 @@ def load_data(
     if mode == "multi_task":
         outcomes = load_multitask_outcomes(path_cfg)
         # exposure از اولین outcome folder
-        first_path = path_cfg.outcomes[0]
-        exposures = ConceptLoader.read_file(f"{first_path}/exposure.csv")
+       # first_path = path_cfg.outcomes[0]
+      #  exposures = ConceptLoader.read_file(f"{first_path}/exposure.csv")
+        first_outcome = os.listdir(path_cfg.outcomes)[0]
+        exposures = ConceptLoader.read_file(os.path.join(path_cfg.outcomes, first_outcome, "exposure.csv"))
     else:
         outcomes = ConceptLoader.read_file(path_cfg.outcome)
         exposures = ConceptLoader.read_file((path_cfg.exposure)
@@ -175,12 +177,14 @@ def load_data(
     return patients_info, outcomes, exposures, initial_pids, exclude_pids
 
 def load_multitask_outcomes(path_cfg) -> pd.DataFrame:
-    """Load multiple outcome files and create multi-label dataframe."""
-    
     all_outcomes = []
-    for outcome_path in path_cfg.outcomes:  # هر item یه path کامله
-        outcome_name = outcome_path.split('/')[-1]  # اسم از آخر path
-        df = ConceptLoader.read_file(f"{outcome_path}/outcome.csv")
+    # اگه outcome_names توی کانفیگ بود، فقط اونا رو بخون
+    # وگرنه همه پوشه‌ها رو بخون
+    outcome_names = path_cfg.get("outcome_names", os.listdir(path_cfg.outcomes))
+    
+    for outcome_name in outcome_names:
+        outcome_path = os.path.join(path_cfg.outcomes, outcome_name)
+        df = ConceptLoader.read_file(os.path.join(outcome_path, "outcome.csv"))
         df['outcome'] = outcome_name
         all_outcomes.append(df)
     
