@@ -211,11 +211,7 @@ class EHRTrainer:
         self.batch_to_device(batch)
 
         with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16):
-
-           # outputs = self.model(batch)
             loss = self.model(batch).loss
-            #hidden = outputs.last_hidden_state
-           # torch.save(hidden.detach().cpu(), "hidden_debug.pt")
 
         self.scaler.scale(loss).backward()
 
@@ -344,7 +340,7 @@ class EHRTrainer:
                 final_step_loss=epoch_loss[-1],
                 best_model=True,
             )
-        ##
+      
         ##    self._extract_and_save_representations(epoch)
             return False
         else:
@@ -411,12 +407,6 @@ class EHRTrainer:
 
         with torch.no_grad():
             for batch in loop:
-                ##
-                if epoch == 0:
-                    print("KEYS:", batch.keys())
-                    if "patient_id" in batch:
-                        print("PATIENT_ID SAMPLE:", batch["patient_id"][:5])
-
                 self.batch_to_device(batch)
                 with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16):
                     outputs = self.model(batch)
@@ -558,15 +548,6 @@ class EHRTrainer:
         save_dir = os.path.join(self.run_folder, "representations")
         os.makedirs(save_dir, exist_ok=True)
 
-       # data = {
-        #    "cls": torch.cat(hidden_cls_list, dim=0),
-       #     "mean": torch.cat(hidden_mean_list, dim=0),
-        #    "last": torch.cat(hidden_last_list, dim=0),
-       #     "max": torch.cat(hidden_max_list, dim=0),
-        #    "labels": torch.cat(labels_list, dim=0),
-        #    "patient_ids": torch.cat(patient_ids_list, dim=0),
-       # }
-
         data = {
         "patient_ids": torch.cat(patient_ids_list, dim=0)
         }
@@ -592,7 +573,7 @@ class EHRTrainer:
         torch.save(data, os.path.join(save_dir, filename))
 
         self.log(f"[{mode}] representations + metadata saved → {save_dir}")
-    ##
+  
     def _extract_and_save_representations(self, epoch):
         self.log("Extracting representations for BEST model...")
         self._evaluate(epoch, mode="val", save_representations=True)

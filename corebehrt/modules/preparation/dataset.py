@@ -89,9 +89,11 @@ class PatientDataset:
         results = Parallel(n_jobs=n_jobs, batch_size=chunk_size, backend="threading")(
             delayed(func)(patient, **kwargs) for patient in loop
         )
-        ##zahra حذف موارد None که ممکنه به خاطر KeyError حذف شده باشن
-        results = [r for r in results if r is not None]
 
+        results = [r for r in results if r is not None]
+        removed = len(self.patients) - len(results)
+        if removed > 0:
+            logging.warning(f"[process_in_parallel] Removed {removed} None results from {func.__name__}")
 
         return results
 
@@ -106,7 +108,9 @@ class PatientDataset:
 
     def filter_by_pids(self, pids: List[str]) -> "PatientDataset":
         pids_set = set(pids)
-        return PatientDataset([p for p in self.patients if p.pid in pids_set])
+        filtered = PatientDataset([p for p in self.patients if p.pid in pids_set])
+        logging.info(f"[filter_by_pids] Before: {len(self.patients)} | After: {len(filtered)} | Removed: {len(self.patients) - len(filtered)}")
+        return filtered
 
     def get_pids(self) -> List[str]:
         return [p.pid for p in self.patients]
@@ -127,8 +131,6 @@ class PatientDataset:
         Returns:
             PatientDataset: Returns self for method chaining.
         """
-        ##for p in self.patients:
-          ##  p.outcome = outcomes[p.pid]
 
         outcome_pids = set(outcomes.index)
         patient_pids = set(p.pid for p in self.patients)
@@ -143,18 +145,6 @@ class PatientDataset:
         logging.info(f"[assign_outcomes] PIDs only in outcomes (not in patients): {len(only_in_outcomes)}")
         logging.info(f"[assign_outcomes] ___PIDs only in patients (not in outcomes): {len(only_in_patients)}")
 
-        """Assign binary outcomes to each patient in the dataset.
-
-        This method supports both classical and out-of-time splitting strategies by
-        assigning a default outcome of 0 to patients not found in the outcomes series.
-
-        Args:
-            outcomes (pd.Series): Series with patient IDs as index and binary outcomes (0/1) as values.
-
-        Returns:
-            PatientDataset: Returns self for method chaining.
-        """
-        
         missing_pids = 0
         is_multitask = isinstance(outcomes, pd.DataFrame)
 
@@ -196,6 +186,7 @@ class PatientDataset:
         combined_patients = []
         for dataset in datasets:
             combined_patients.extend(dataset.patients)
+        logging.info(f"[combine_datasets] Combined {len(datasets)} datasets with total {len(combined_patients)} patients")
         return PatientDataset(combined_patients)
 
 
@@ -237,7 +228,6 @@ class MLMDataset(Dataset):
             SEGMENT_FEAT: torch.tensor(patient.segments, dtype=torch.long),
             AGE_FEAT: torch.tensor(patient.ages, dtype=torch.float),
             ATTENTION_MASK: attention_mask,
-            ##
             "patient_id": torch.tensor(int(patient.pid), dtype=torch.long)
 
         }
@@ -261,8 +251,7 @@ class BinaryOutcomeDataset(Dataset):
         patient = self.patients[index]
         attention_mask = torch.ones(
             len(patient.concepts), dtype=torch.long
-        )  # Require attention mask for bi-gru head
-        ##
+        )  # Require attention mask for bi-gru head        
         if isinstance(patient.outcome, dict):
             target = torch.tensor(list(patient.outcome.values()), dtype=torch.float)
         else:
@@ -275,7 +264,6 @@ class BinaryOutcomeDataset(Dataset):
             AGE_FEAT: torch.tensor(patient.ages, dtype=torch.float),
             ATTENTION_MASK: attention_mask,
             TARGET: target,
-            ##
             "patient_id": torch.tensor(int(patient.pid), dtype=torch.long)
         }
         return sample
