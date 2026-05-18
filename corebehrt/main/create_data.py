@@ -49,21 +49,19 @@ def main_data(config_path):
     # TODO: temporary fix/check until we split the script into two.
     # As cfg.paths.features is always set, its value cannot be used to decide
     # if features are present.
+    evaluation_mode = cfg.get("evaluation_mode", "oot")
     if os.path.exists(join(cfg.paths.features, "held_out", "0.parquet")):
         logger.info("Reusing existing features")
         logger.info("Finished feature creation and processing")
     else:
         logger.info("Create and process features")
-        splits = ["train"]
+        if evaluation_mode == "cv":
+            splits = ["train", "tuning", "held_out"]
+        else:
+            splits = ["train"]
         create_and_save_features(cfg, splits, logger)
         logger.info("Finished feature creation and processing")
-    # else:
-   #     logger.info("Create and process features")
-   #     if cfg.get("exclude_held_out", False):
-   #         logger.info("Excluding held out")
-   #         splits = ["train"]
-   #     create_and_save_features(cfg, splits, logger)
-   # 
+
     logger.info("Tokenizing")
     features_path = cfg.paths.features
     tokenized_path = cfg.paths.tokenized
@@ -88,13 +86,12 @@ def main_data(config_path):
         "train",
     )
     tokenizer.freeze_vocabulary()
-
-  ##  logger.info("Tokenizing tuning")
-  ##  load_tokenize_and_save(features_path, tokenizer, tokenized_path, "tuning")
-
-  ##  if os.path.exists(os.path.join(features_path, "held_out")):
-  ##      logger.info("Tokenizing held_out")
-  ##      load_tokenize_and_save(features_path, tokenizer, tokenized_path, "held_out")
+    if evaluation_mode == "cv":
+        logger.info("Tokenizing tuning")
+        load_tokenize_and_save(features_path, tokenizer, tokenized_path, "tuning")
+        if os.path.exists(os.path.join(features_path, "held_out")):
+            logger.info("Tokenizing held_out")
+            load_tokenize_and_save(features_path, tokenizer, tokenized_path, "held_out")
     logger.info("Finished tokenizing")
     logger.info("Saving vocabulary")
     torch.save(tokenizer.vocabulary, join(tokenized_path, "vocabulary.pt"))

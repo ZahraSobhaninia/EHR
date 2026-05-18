@@ -10,7 +10,7 @@ This module defines customized EHR-focused BERT models built on top of ModernBer
 
 import logging
 from typing import Tuple
-
+from corebehrt.modules.trainer.losses import FocalLoss
 from corebehrt.functional.modeling import attention
 import torch
 import torch.nn as nn
@@ -283,8 +283,7 @@ class CorebehrtForFineTuning(CorebehrtEncoder):
         return self.loss_fct(hidden_states.view(-1), labels.view(-1))
     
 
-##
-class CorebehrtForMultiTaskFineTuning(CorebehrtEncoder):
+##class CorebehrtForMultiTaskFineTuning(CorebehrtEncoder):
     """
     Multi-task fine-tuning head for multiple clinical outcomes.
     """
@@ -292,24 +291,34 @@ class CorebehrtForMultiTaskFineTuning(CorebehrtEncoder):
     def __init__(self, config):
         super().__init__(config)
         
-        # task names از config
         task_names = getattr(config, 'tasks', ['mortality'])
         
-        # یه head برای هر task
         self.task_heads = nn.ModuleDict({
             task: FineTuneHead(hidden_size=config.hidden_size)
             for task in task_names
         })
         
-        # یه loss برای هر task
         pos_weights = getattr(config, 'pos_weights', {})
-        self.loss_fcts = nn.ModuleDict({
-            task: nn.BCEWithLogitsLoss(
-                pos_weight=torch.tensor(pos_weights[task]) 
-                if task in pos_weights else None
-            )
-            for task in task_names
-        })
+        loss_fct_cfg = getattr(config, 'loss_function', None)
+
+        if loss_fct_cfg is not None and 'FocalLoss' in str(loss_fct_cfg.get('_target_', '')):
+            self.loss_fcts = nn.ModuleDict({
+                task: FocalLoss(
+                    alpha=loss_fct_cfg.get('alpha', None),
+                    gamma=loss_fct_cfg.get('gamma', 2.0),
+                    pos_weight=torch.tensor([pos_weights[task]])
+                    if task in pos_weights else None
+                )
+                for task in task_names
+            })
+        else:
+            self.loss_fcts = nn.ModuleDict({
+                task: nn.BCEWithLogitsLoss(
+                    pos_weight=torch.tensor([pos_weights[task]])
+                    if task in pos_weights else None
+                )
+                for task in task_names
+            })
         
         self.task_names = task_names
 
@@ -317,22 +326,19 @@ class CorebehrtForMultiTaskFineTuning(CorebehrtEncoder):
         outputs = super().forward(batch, **kwargs)
         sequence_output = outputs[0]
 
-        # هر task یه logit جداگانه داره
         all_logits = {}
         for task in self.task_names:
             all_logits[task] = self.task_heads[task](
                 sequence_output, batch[ATTENTION_MASK]
             )
 
-        # combined logits
         outputs.logits = torch.stack(
             [all_logits[task] for task in self.task_names], dim=1
         )
 
-        # loss
         if batch.get(TARGET) is not None:
             total_loss = 0
-            labels = batch[TARGET]  # shape: (batch, n_tasks)
+            labels = batch[TARGET]
             for i, task in enumerate(self.task_names):
                 task_loss = self.loss_fcts[task](
                     all_logits[task].view(-1),

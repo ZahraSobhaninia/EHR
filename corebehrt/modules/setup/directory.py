@@ -5,16 +5,16 @@ from os.path import basename, join, splitext
 from shutil import copyfile, rmtree
 
 from corebehrt.constants.paths import (
-    CHECKPOINTS_DIR,
-    COHORT_CFG,
-    DATA_CFG,
-    FINETUNE_CFG,
-    OUTCOMES_CFG,
-    PRETRAIN_CFG,
-    PREPARE_PRETRAIN_CFG,
-    PREPARE_FINETUNE_CFG,
-    EVALUATE_CFG,
-    XGBOOST_CFG,
+CHECKPOINTS_DIR,
+COHORT_CFG,
+DATA_CFG,
+FINETUNE_CFG,
+OUTCOMES_CFG,
+PRETRAIN_CFG,
+PREPARE_PRETRAIN_CFG,
+PREPARE_FINETUNE_CFG,
+EVALUATE_CFG,
+XGBOOST_CFG,
 )
 from corebehrt.functional.setup.checks import check_categories
 from corebehrt.modules.setup.config import Config, load_config
@@ -23,8 +23,7 @@ logger = logging.getLogger(__name__)  # Get the logger for this module
 
 
 class DirectoryPreparer:
-    """Prepares directories for training and evaluation."""
-
+    
     def __init__(self, cfg: Config) -> None:
         """Sets up DirectoryPreparer and adds defaul configuration to cfg."""
         self.cfg = cfg
