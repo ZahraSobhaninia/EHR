@@ -85,7 +85,6 @@ def select_cohort(
     # Determine index dates for all patients
     # For absolute mode, a fixed date is assigned; for relative, it's computed based on exposures.
     logger.info("Determining index dates")
-    print(len(patients_info), len(exposures))
     mode = index_date_cfg["mode"]
     index_dates = IndexDateHandler.determine_index_dates(
         patients_info,
@@ -149,20 +148,15 @@ def load_data(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, List[str], List[str]]:
     """Load patient, outcomes, and exposures data."""
     patients_info = ConceptLoader.read_file(path_cfg.patients_info)
-    ##
-    print(f"DEBUG: mode = {mode}")  
-    print(f"DEBUG: outcomes type = {type(path_cfg.outcomes)}")
     if mode == "multi_task":
-        outcomes = load_multitask_outcomes(path_cfg)
-        # exposure از اولین outcome folder
-       # first_path = path_cfg.outcomes[0]
-      #  exposures = ConceptLoader.read_file(f"{first_path}/exposure.csv")
+        outcomes = load_multitask_outcomes(path_cfg)    
         first_outcome = os.listdir(path_cfg.outcomes)[0]
         exposures = ConceptLoader.read_file(os.path.join(path_cfg.outcomes, first_outcome, "exposure.csv"))
     else:
         outcomes = ConceptLoader.read_file(path_cfg.outcome)
-        exposures = ConceptLoader.read_file((path_cfg.exposure)
-        )
+        exposures = (ConceptLoader.read_file(path_cfg.exposure)
+            if path_cfg.get("exposure", False)
+            else outcomes)
 
     exposures = select_first_event(exposures, PID_COL, TIMESTAMP_COL)
 
@@ -178,8 +172,7 @@ def load_data(
 
 def load_multitask_outcomes(path_cfg) -> pd.DataFrame:
     all_outcomes = []
-    # اگه outcome_names توی کانفیگ بود، فقط اونا رو بخون
-    # وگرنه همه پوشه‌ها رو بخون
+
     outcome_names = path_cfg.get("outcome_names", os.listdir(path_cfg.outcomes))
     
     for outcome_name in outcome_names:
