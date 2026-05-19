@@ -283,7 +283,7 @@ class CorebehrtForFineTuning(CorebehrtEncoder):
         return self.loss_fct(hidden_states.view(-1), labels.view(-1))
     
 
-##class CorebehrtForMultiTaskFineTuning(CorebehrtEncoder):
+class CorebehrtForMultiTaskFineTuning(CorebehrtEncoder):
     """
     Multi-task fine-tuning head for multiple clinical outcomes.
     """
