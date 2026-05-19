@@ -56,8 +56,6 @@ class Initializer:
         if self.checkpoint:
             logger.info("Loading model from checkpoint")
             loss_weight = get_loss_weight(self.cfg, outcomes)
-            
-##
             # multi-task or single-task
             if self.cfg.get("mode", "single_task") == "multi_task":
                 model_class = CorebehrtForMultiTaskFineTuning
