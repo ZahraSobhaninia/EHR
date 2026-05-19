@@ -3,16 +3,16 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 from torch.utils.data import WeightedRandomSampler
-
 from corebehrt.modules.setup.config import instantiate_function
-
+import logging
+logger = logging.getLogger(__name__)
 
 def get_sampler(cfg, outcomes: List[int]) -> Optional[WeightedRandomSampler]:
     """Get sampler for training data.
     If sampler_function is false or undefined, then no sampler is used.
     If sample_weight_function is defined then the function is used to calculate the weights.
     """
-     # multi-task: disable sampler
+    # multi-task: disable sampler
     if len(outcomes) > 0 and isinstance(outcomes[0], dict):
         return None
     
@@ -29,7 +29,7 @@ def compute_labels(outcomes: List[int]) -> Dict[int, int]:
     """Compute the labels for the outcomes."""
     labels = pd.Series(outcomes)
     counts = labels.value_counts()
-    print(f"Class counts:\n{counts.to_string()}")
+    logger.info(f"Class counts:\n{counts.to_string()}")
 
     if len(counts) < 2:
         raise ValueError(
