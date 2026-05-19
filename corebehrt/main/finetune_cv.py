@@ -1,8 +1,6 @@
 import logging
 import os
 from os.path import join
-
-# os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 import torch
 
 from corebehrt.constants.paths import (
@@ -29,14 +27,8 @@ logging.basicConfig(
 
 def main_finetune(config_path):
     cfg = load_config(config_path)
-
-    logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
     # Setup directories
     DirectoryPreparer(cfg).setup_finetune()
-
     # Logger
     logger = logging.getLogger("finetune_cv")
 
