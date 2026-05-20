@@ -22,8 +22,7 @@ def inference_fold(
     modelmanager_trained = ModelManager(cfg, fold)
     checkpoint = modelmanager_trained.load_checkpoint(checkpoints=True)
     model = modelmanager_trained.initialize_finetune_model(checkpoint, [])
-    print(f"Model loaded from {fold_folder}")
-
+    logger.info(f"Model loaded from {fold_folder}")
     # Run inference
     return_embeddings = cfg.get("return_embeddings", False)
     evaluater = EHRInferenceRunner(
@@ -36,8 +35,7 @@ def inference_fold(
         return_embeddings=return_embeddings
     )
     probas = torch.sigmoid(logits_tensor).numpy()
-    print(f"DEBUG logits shape: {logits_tensor.shape}")
-    print(f"DEBUG probas shape: {probas.shape}")
+
     return probas, embeddings_tensor
 
 
