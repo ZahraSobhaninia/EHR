@@ -5,7 +5,7 @@ logging:
 
 paths:
   ### Inputs
-  #features: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MD/0_CreateData/features'
+  features: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MD/0_CreateData/features'
     
   
  # initial_pids: 'researcher_data:Zahra/CoreBehrt_OOT/MDP/0_CreateData/811/tokenized/pids_held_out.pt'   # Initial patients to select from [list of pids] (optional)

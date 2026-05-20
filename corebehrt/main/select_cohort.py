@@ -43,9 +43,7 @@ def main_select_cohort(config_path: str):
     logger.info("Saving cohort")
     torch.save(pids, join(path_cfg.cohort, PID_FILE))
     index_dates.to_csv(join(path_cfg.cohort, INDEX_DATES_FILE))
-    logger.info("Saving cohort")
-    torch.save(pids, join(path_cfg.cohort, PID_FILE))
-    index_dates.to_csv(join(path_cfg.cohort, INDEX_DATES_FILE))
+    logger.info(f"Saved {len(pids)} pids to {path_cfg.cohort}")  
 
     if len(test_pids) > 0:
         torch.save(test_pids, join(path_cfg.cohort, TEST_PIDS_FILE))
