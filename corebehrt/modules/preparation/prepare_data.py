@@ -3,10 +3,12 @@ import os
 from datetime import datetime
 from os.path import join
 from typing import List, Tuple
-
+import glob
 import pandas as pd
 import torch
 from tqdm import tqdm
+import json
+from collections import Counter
 
 from corebehrt.constants.data import ABSPOS_COL, PID_COL, TIMESTAMP_COL
 from corebehrt.constants.paths import INDEX_DATES_FILE, OUTCOMES_FILE, PID_FILE
@@ -39,9 +41,6 @@ from corebehrt.functional.cohort_handling.outcomes import get_binary_outcomes, g
 
 logger = logging.getLogger(__name__)  # Get the logger for this module
 
-
-
-
 # TODO: Add option to load test set only!
 class DatasetPreparer:
     def __init__(self, cfg: Config):
@@ -72,15 +71,10 @@ class DatasetPreparer:
     # --------------------
     # STEP 1 - Detect OOT vs Tuning mode
     # --------------------
-      #  if mode == "tuning":
-      #      tuning_path = os.path.join(paths_cfg.tokenized, "features_tuning")
-      #      if not os.path.exists(tuning_path):
-      #          logger.warning("⚠️ 'features_tuning' not found — assuming OOT mode, using 'features_train' instead.")
-       #         mode = "train"
-
+ 
         split_path = os.path.join(paths_cfg.tokenized, f"features_{mode}")
         if not os.path.exists(split_path) or len(glob.glob(os.path.join(split_path, "*.parquet"))) == 0:
-            logger.warning(f"⚠️ 'features_{mode}' not found or empty — using 'features_train' instead.")
+            logger.warning(f"'features_{mode}' not found or empty — using 'features_train' instead.")
             mode = "train"    
         
     # --------------------
@@ -91,21 +85,17 @@ class DatasetPreparer:
         )
         index_dates[PID_COL] = index_dates[PID_COL].astype(int)
         index_dates[ABSPOS_COL] = get_hours_since_epoch(index_dates[TIMESTAMP_COL])
-            # --------------------
-        # STEP 3 - Load outcomes
+
         # --------------------
-        #outcomes = pd.read_csv(paths_cfg.outcome)
-        #outcomes[PID_COL] = outcomes[PID_COL].astype(int)
-##
         # STEP 3 - Load outcomes with multi-task support
         if paths_cfg.get("mode", "single_task") == "multi_task" or self.cfg.get("mode", "single_task") == "multi_task":
             outcomes = load_multitask_outcomes_prepare(paths_cfg, outcome_cfg)
         else:
             outcomes = pd.read_csv(paths_cfg.outcome)
             outcomes[PID_COL] = outcomes[PID_COL].astype(int)
-##
 
-       # --------------------
+
+    # --------------------
     # STEP 4 - Load tokenized data (ShardLoader)
     # --------------------
         loader = ShardLoader(
@@ -133,11 +123,6 @@ class DatasetPreparer:
         pids_index = set(index_dates[PID_COL].unique())
 
         intersection_all = pids_tokenized & pids_index       # & pids_outcomes
-
-     #   فقط بیمارانی رو نگه می‌داره که:
-
-#هم در tokenized هستن
-#هم در index_dates هستن
 
         logger.info(f"[Finetune] Patients in ALL (tokenized ∩ outcomes ∩ index_dates): {len(intersection_all)}")
         logger.info(f"[Finetune] Only in tokenized: {len(pids_tokenized - intersection_all)}")
@@ -175,28 +160,6 @@ class DatasetPreparer:
 
         data = PatientDataset(patients=patient_list)
 
-     #   # Loading and processing outcomes
-     #   outcomes = pd.read_csv(paths_cfg.outcome)
-     #   outcomes[PID_COL] = outcomes[PID_COL].astype(int)
-     #   outcomes = filter_df_by_pids(outcomes, data.get_pids())
-    #    logger.info("Handling outcomes")
-
-        # Outcome Handler now only needs to do 1 thing: if outcome is in follow up window 1 else 0
-     #   binary_outcomes = get_binary_outcomes(
-     #       index_dates,
-     #       outcomes,
-      #      outcome_cfg.get("n_hours_start_follow_up", 0),
-      #      outcome_cfg.get("n_hours_end_follow_up", None),
-      #  )
-
-      #  logger.info("Assigning outcomes")
-      #  data = data.assign_outcomes(binary_outcomes)
-
-
-
-        # -------------------------
-        # Loading and processing outcomes
-##
         logger.info("Handling outcomes")
         if self.cfg.get("mode", "single_task") == "multi_task":
             binary_outcomes = get_multitask_binary_outcomes(
@@ -225,19 +188,6 @@ class DatasetPreparer:
             logger.info(f"Positive per task:\n{multilabel_df.drop(PID_COL, axis=1).sum()}")
             
         if isinstance(binary_outcomes, pd.DataFrame):
-            print(binary_outcomes[binary_outcomes.sum(axis=1) > 0])
-        else:
-            print(f"Positive outcomes: {binary_outcomes.sum()}")
-##
-        #binary_outcomes = get_binary_outcomes(
-        #    index_dates,
-        #    outcomes,
-        #    outcome_cfg.get("n_hours_start_follow_up", 0),
-        #    outcome_cfg.get("n_hours_end_follow_up", None),
-        #)
-
-       # log
-        if isinstance(binary_outcomes, pd.DataFrame):
             logger.info(f"Binary outcomes summary:\n{binary_outcomes.sum()}")
         else:
             logger.info(f"Binary outcomes summary: {binary_outcomes.value_counts()}")
@@ -262,39 +212,35 @@ class DatasetPreparer:
         missing_pids = valid_pids - set(index_dates[PID_COL])
         if missing_pids:
             logger.warning(f"[Censoring] {len(missing_pids)} patients in data but missing from index_dates! Adding placeholder dates.")
-            
-            # اضافه کردن placeholder به index_dates
             placeholder_df = pd.DataFrame({
                 PID_COL: list(missing_pids),
-                ABSPOS_COL: index_dates[ABSPOS_COL].max()  # یا هر عدد بزرگ مثل max(abspos)+1
+                ABSPOS_COL: index_dates[ABSPOS_COL].max()  
             })
             index_dates = pd.concat([index_dates, placeholder_df], ignore_index=True)
 
-        index_dates[PID_COL] = index_dates[PID_COL].astype(int)  # اطمینان از نوع صحیح
+        index_dates[PID_COL] = index_dates[PID_COL].astype(int)  
 
-        # اطمینان از نوع صحیح ایندکس در censor_dates
+       
         censor_dates = (
             index_dates.set_index(PID_COL)[ABSPOS_COL] + self.cfg.outcome.n_hours_censoring
         )
 
         censor_dates.index = censor_dates.index.astype(int)
-
-        # حذف بیمارانی که censor_date ندارند
+ 
         valid_censor_pids = set(censor_dates.index)
         initial_patient_count = len(data.patients)
         data.patients = [p for p in data.patients if int(p.pid) in valid_censor_pids]
         logger.info(f" [Censoring] Removed {initial_patient_count - len(data.patients)} patients without censor_date.")
-        # بررسی وجود pidهای بدون censor_date
-
+ 
         remaining_pids = set([int(p.pid) for p in data.patients])
         missing_censor_pids = remaining_pids - valid_censor_pids
         if missing_censor_pids:
             logger.warning(f"❗ {len(missing_censor_pids)} patients still missing censor_date! Example: {list(missing_censor_pids)[:5]}")
         else:
-            logger.info("✅ All patients have valid censor_date.")
+            logger.info("All patients have valid censor_date.")
 
         self._validate_censoring(data.patients, censor_dates, logger)
-        ##zahra
+     
         invalid_pids = [p.pid for p in data.patients if p.pid not in censor_dates.index]
         if invalid_pids:
             logger.warning(f"[Censoring] {len(invalid_pids)} patients missing from censor_dates (example: {invalid_pids[:5]})")
@@ -334,7 +280,6 @@ class DatasetPreparer:
             else get_non_priority_tokens(self.vocab, data_cfg.low_priority_prefixes)
         )
 
-        # تأکید دوباره برای type match
         for patient in data.patients:
             patient.pid = int(patient.pid)
 
@@ -354,6 +299,36 @@ class DatasetPreparer:
         logger.info(
             f"Max segment length: {max(max(patient.segments) for patient in data.patients)}"
         )
+
+        is_multitask = isinstance(data.patients[0].outcome, dict) if data.patients else False
+
+        if is_multitask:
+            summary = {
+                'total_patients': len(data.patients),
+                'avg_sequence_length': round(sum(len(p.concepts) for p in data.patients) / len(data.patients), 2),
+                'max_sequence_length': max(len(p.concepts) for p in data.patients),
+                'min_sequence_length': min(len(p.concepts) for p in data.patients),
+                'vocab_size': len(self.vocab),
+            }
+            for task in data.patients[0].outcome.keys():
+                summary[f'positive_{task}'] = sum(1 for p in data.patients if p.outcome.get(task, 0) == 1)
+        else:
+            summary = {
+                'total_patients': len(data.patients),
+                'positive_patients': sum(1 for p in data.patients if p.outcome == 1),
+                'negative_patients': sum(1 for p in data.patients if p.outcome == 0),
+                'positive_rate': round(sum(1 for p in data.patients if p.outcome == 1) / len(data.patients) * 100, 3),
+                'avg_sequence_length': round(sum(len(p.concepts) for p in data.patients) / len(data.patients), 2),
+                'max_sequence_length': max(len(p.concepts) for p in data.patients),
+                'min_sequence_length': min(len(p.concepts) for p in data.patients),
+                'vocab_size': len(self.vocab),
+            }
+
+        finetune_stats = {'summary': summary}
+        with open(join(self.processed_dir, 'finetune_stats.json'), 'w') as f:
+            json.dump(finetune_stats, f, indent=2)
+        logger.info(f"Saved finetune stats: {finetune_stats['summary']}")
+
         # save
         os.makedirs(self.processed_dir, exist_ok=True)
         save_vocabulary(self.vocab, self.processed_dir)
@@ -409,6 +384,38 @@ class DatasetPreparer:
             f"Max segment length: {max(max(patient.segments) for patient in data.patients)}"
         )
 
+        inv_vocab = {v: k for k, v in self.vocab.items()}
+        all_concepts = [c for p in data.patients for c in p.concepts]
+        type_counts = Counter()
+        code_counts = Counter()
+        for concept_id in all_concepts:
+            code = inv_vocab.get(concept_id, 'UNK')
+            code_counts[code] += 1
+            if '/' in code:
+                type_counts[code.split('/')[0]] += 1
+            elif code.startswith('['):
+                type_counts['SPECIAL'] += 1
+            else:
+                type_counts['OTHER'] += 1
+        total_codes = sum(type_counts.values())
+        full_stats = {
+            'summary': {
+                'total_patients': len(data.patients),
+                'vocab_size': len(self.vocab),
+                'avg_sequence_length': round(sum(len(p.concepts) for p in data.patients) / len(data.patients), 2),
+                'max_sequence_length': max(len(p.concepts) for p in data.patients),
+                'min_sequence_length': min(len(p.concepts) for p in data.patients),
+            },
+            'code_type_distribution': {
+                'counts': dict(type_counts),
+                'percentages': {k: round(v/total_codes*100, 2) for k, v in type_counts.items()}
+            },
+            'top_100_codes': dict(code_counts.most_common(100)),
+        }
+        os.makedirs(self.processed_dir, exist_ok=True)
+        with open(join(self.processed_dir, 'dataset_stats.json'), 'w') as f:
+            json.dump(full_stats, f, indent=2)
+        logger.info(f"Saved dataset stats for {len(data.patients)} patients")
         # Save
         os.makedirs(self.processed_dir, exist_ok=True)
         save_vocabulary(self.vocab, self.processed_dir)
@@ -487,7 +494,6 @@ class DatasetPreparer:
         logger.info(f"Censoring validated for {len(patient_pids)} patients")
 
 
-##
 def load_multitask_outcomes_prepare(paths_cfg, outcome_cfg) -> pd.DataFrame:
     all_outcomes = []
     outcome_names = paths_cfg.get("outcome_names", os.listdir(paths_cfg.outcomes))
