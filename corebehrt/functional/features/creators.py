@@ -1,9 +1,7 @@
 import uuid
 import warnings
-
 import numpy as np
 import pandas as pd
-
 from corebehrt.constants.data import (
     ABSPOS_COL,
     ADMISSION,
@@ -22,7 +20,8 @@ from corebehrt.constants.data import (
 )
 from corebehrt.functional.features.normalize import normalize_segments_series
 from corebehrt.functional.utils.time import get_hours_since_epoch
-
+import logging
+logger = logging.getLogger(__name__) 
 
 def create_abspos(concepts: pd.DataFrame) -> pd.DataFrame:
     """
@@ -46,13 +45,13 @@ def create_age_in_years(concepts: pd.DataFrame) -> pd.DataFrame:
     """
     # Try to convert columns to datetime if they aren't already
     if not pd.api.types.is_datetime64_any_dtype(concepts[TIMESTAMP_COL]):
-        print(f"\nConverting {TIMESTAMP_COL} to datetime...")
+        logger.info(f"Converting {TIMESTAMP_COL} to datetime...")
         concepts[TIMESTAMP_COL] = pd.to_datetime(
             concepts[TIMESTAMP_COL], errors="coerce"
         )
 
     if not pd.api.types.is_datetime64_any_dtype(concepts[BIRTHDATE_COL]):
-        print(f"\nConverting {BIRTHDATE_COL} to datetime...")
+        logger.info(f"Converting {BIRTHDATE_COL} to datetime...")
         concepts[BIRTHDATE_COL] = pd.to_datetime(
             concepts[BIRTHDATE_COL], errors="coerce"
         )

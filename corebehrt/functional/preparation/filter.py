@@ -8,9 +8,10 @@ This module provides utilities for:
 
 from bisect import bisect_right
 from typing import List
-
 import pandas as pd
 import warnings
+import logging
+logger = logging.getLogger(__name__)
 
 from corebehrt.modules.preparation.dataset import PatientData
 from corebehrt.constants.data import (
@@ -52,7 +53,7 @@ def exclude_short_sequences(
 
 def _remove_last_sep_token(patient: PatientData) -> PatientData:
     """Remove the last single SEP token from the patient's data if it exists."""
-    if len(patient.concepts) == 0:  # ← این رو اضافه کن
+    if len(patient.concepts) == 0:  
         return patient
     if patient.concepts[-1] == DEFAULT_VOCABULARY[SEP_TOKEN]:
         patient.concepts = patient.concepts[:-1]
@@ -79,7 +80,7 @@ def censor_patient(
     Returns:
         The censored PatientData object with truncated attributes and appended CLS token.
     """
-    ##censor_date = censor_dates[patient.pid]
+    
     try:
         censor_date = censor_dates[patient.pid]
     except KeyError:
