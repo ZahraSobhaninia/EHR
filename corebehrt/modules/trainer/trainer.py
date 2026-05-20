@@ -473,7 +473,7 @@ class EHRTrainer:
         """Process results specifically for binary classification."""
         targets = torch.cat(targets)
         logits = torch.cat(logits)
- ##   # multi-task or single-task
+        # multi-task or single-task
         is_multitask = logits.dim() > 1 and logits.shape[1] > 1
     
         if is_multitask:
@@ -533,7 +533,7 @@ class EHRTrainer:
         """Moves a batch to the device in-place"""
         for key, value in batch.items():
             batch[key] = value.to(self.device)
-    ##
+
     def _save_representations(
         self,
         hidden_cls_list,
