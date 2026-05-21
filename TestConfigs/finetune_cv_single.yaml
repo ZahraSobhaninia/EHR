@@ -1,0 +1,77 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: single_task
+
+paths:
+  prepared_data: "./outputs/run1/cv_single/prepared_data"
+  pretrain_model: "./outputs/run1/pretrain/model"
+  model: "./outputs/run1/cv_single/model"
+
+evaluate: false # evaluate best model on test sets
+      
+model:
+  cls:
+    _target_: ehr2vec.model.heads.ClassifierGRU
+    bidirectional: true
+    
+
+trainer_args:
+  
+  task: finetune
+  save_representations: true
+  save_labels: true
+  representation_types: ["mean", "cls", "max", "last"]
+ 
+  loss_function:    #null   # ‌BCE
+    _target_: corebehrt.modules.trainer.losses.FocalLoss
+    alpha: 0.25   #0.988    #Data Driven       
+    gamma: 1   #2      
+    use_pos_weight: true
+      
+  #sampler_function: 
+  #  _target_: corebehrt.modules.trainer.utils.Sampling.inverse_sqrt
+
+
+  epochs: 2
+  batch_size: 8
+  effective_batch_size: 8
+  info: false
+  early_stopping: false
+  save_representations: false
+
+optimizer:
+  lr: 1e-5   #2e-5
+  eps: 1e-8
+  weight_decay: 0.001 
+
+scheduler:
+  _target_: transformers.get_cosine_schedule_with_warmup   #transformers.get_linear_schedule_with_warmup
+
+  num_warmup_steps: 849  #566        #283  # ~5% of steps
+  num_training_steps: 8490  #5660 
+
+metrics:
+  accuracy:
+    _target_: corebehrt.modules.monitoring.metrics.Accuracy
+    threshold: 0.05
+  roc_auc:
+    _target_: corebehrt.modules.monitoring.metrics.ROC_AUC
+  pr_auc:
+    _target_: corebehrt.modules.monitoring.metrics.PR_AUC
+  precentage_positives:
+    _target_: corebehrt.modules.monitoring.metrics.Percentage_Positives
+
+  mean_probability:
+    _target_: corebehrt.modules.monitoring.metrics.Mean_Probability
+  true_positives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Positives
+
+  true_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Negatives
+  false_positives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Positives
+
+  false_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Negatives

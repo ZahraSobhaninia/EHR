@@ -14,6 +14,7 @@ from corebehrt.functional.setup.args import get_args
 from corebehrt.main.helper.select_cohort import select_cohort
 from corebehrt.modules.setup.config import load_config
 from corebehrt.modules.setup.directory import DirectoryPreparer
+from corebehrt.constants.data import PID_COL
 
 CONFIG_PATH = "./corebehrt/configs/select_cohort.yaml"
 
@@ -27,7 +28,7 @@ def main_select_cohort(config_path: str):
 
     logger.info("Starting cohort selection")
     path_cfg = cfg.paths
-    pids, index_dates, train_val_pids, test_pids = select_cohort(
+    pids, index_dates, train_val_pids, test_pids, outcomes = select_cohort(
         path_cfg,
         cfg.selection,
         cfg.index_date,
@@ -49,11 +50,14 @@ def main_select_cohort(config_path: str):
         torch.save(test_pids, join(path_cfg.cohort, TEST_PIDS_FILE))
 
     if len(train_val_pids) > 0:
+        outcome_pids = set(outcomes[PID_COL].unique())
+        binary_outcomes = [1 if pid in outcome_pids else 0 for pid in train_val_pids]
         folds = create_folds(
             train_val_pids,
             cfg.get("cv_folds", 1),
             cfg.get("seed", 42),
             cfg.get("val_ratio", 0.1),
+            outcomes=binary_outcomes,
         )
         torch.save(folds, join(path_cfg.cohort, FOLDS_FILE))
 

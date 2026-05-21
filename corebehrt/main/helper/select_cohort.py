@@ -135,6 +135,7 @@ def select_cohort(
         index_dates,
         train_val_pids,
         test_pids,
+        outcomes,
     )
 
 

@@ -1,0 +1,16 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+  features: "./outputs/run1/features"
+  tokenized: "./outputs/run1/tokenized"
+  prepared_data: "./outputs/run1/pretrain/prepared_data"
+
+data:
+  type: "pretrain"
+  evaluation_mode: cv
+  val_ratio: 0.2
+  truncation_len: 512
+  min_len: 2
+  predefined_splits: false

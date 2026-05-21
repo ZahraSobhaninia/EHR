@@ -63,8 +63,7 @@ class ClassifierGRU_AttnMLP(nn.Module):
 
         # attention scores: (B, T, heads)
         attn_scores = self.attn(out)
-        neg_inf = torch.finfo(out.dtype).min
-        attn_scores = attn_scores.masked_fill(mask == 0, neg_inf)
+        attn_scores = attn_scores.masked_fill(mask == 0, -1e4)
 
         attn_weights = torch.softmax(attn_scores, dim=1)   
         attn_weights = self.attn_dropout(attn_weights)     # (B, T, heads)

@@ -7,7 +7,7 @@ from sklearn.model_selection import KFold
 
 from corebehrt.constants.data import TRAIN_KEY, VAL_KEY
 from corebehrt.modules.preparation.dataset import PatientDataset
-
+from sklearn.model_selection import StratifiedKFold
 
 def split_pids_into_pt_ft_test(
     pids: list, pretrain: float, finetune: float, test: float
@@ -128,7 +128,8 @@ def split_into_test_and_train_val_pids(pids: list, test_split: float):
 
 
 def create_folds(
-    pids: list, num_folds: int, seed: int = 42, val_ratio: float = 0.8
+    pids: list, num_folds: int, seed: int = 42, val_ratio: float = 0.8,
+    outcomes: list = None
 ) -> List[Dict[str, list]]:
     """
     Create k folds from a list of PIDs.
@@ -160,10 +161,16 @@ def create_folds(
         val_pids = pids_array[split_idx:].tolist()
         folds = [{TRAIN_KEY: train_pids, VAL_KEY: val_pids}]
     else:
-        kf = KFold(n_splits=num_folds, shuffle=True, random_state=seed)
-        folds = [{TRAIN_KEY: [], VAL_KEY: []} for _ in range(num_folds)]
+        if outcomes is not None:
+            from sklearn.model_selection import StratifiedKFold
+            kf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=seed)
+            splits = kf.split(pids_array, outcomes)
+        else:
+            kf = KFold(n_splits=num_folds, shuffle=True, random_state=seed)
+            splits = kf.split(pids_array)
 
-        for i, (train_idx, val_idx) in enumerate(kf.split(pids_array)):
+        folds = [{TRAIN_KEY: [], VAL_KEY: []} for _ in range(num_folds)]
+        for i, (train_idx, val_idx) in enumerate(splits):
             folds[i][TRAIN_KEY] = [pids_array[idx] for idx in train_idx]
             folds[i][VAL_KEY] = [pids_array[idx] for idx in val_idx]
 

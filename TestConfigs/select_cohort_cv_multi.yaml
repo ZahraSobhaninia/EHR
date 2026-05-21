@@ -1,0 +1,31 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: multi_task
+
+paths:
+  features: "./outputs/run1/features"
+  initial_pids: "./outputs/run1/tokenized/pids_tuning.pt"
+  outcomes: "./example_data/outcomes/multi"
+  outcome_names:
+    - Mortality
+    - ARF
+  exposure: "exposure.csv"
+  outcome: "outcome.csv"
+  cohort: "./outputs/run1/cv_multi/cohort"
+
+selection:
+  exclude_prior_outcomes: true
+  exposed_only: true
+  age:
+    min_years: 0
+    max_years: 120
+
+index_date:
+  mode: relative
+  relative:
+    n_hours_from_exposure: 0
+
+cv_folds: 2
+test_ratio: 0.1
