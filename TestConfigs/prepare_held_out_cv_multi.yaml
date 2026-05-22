@@ -1,0 +1,26 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: multi_task
+
+paths:
+  features: "./outputs/run1/features"
+  tokenized: "./outputs/run1/tokenized"
+  cohort: "./outputs/cv_multi/held_out/cohort"
+  outcomes: "./example_data/outcomes/multi"
+  outcome_names:
+    - Mortality
+    - ARF
+  prepared_data: "./outputs/cv_multi/held_out/prepared_data"
+
+data:
+  type: "test"
+  test_modes: ["held_out"]  
+  truncation_len: 512
+  min_len: 1
+
+outcome:
+  n_hours_censoring: 87600
+  n_hours_start_follow_up: 0
+  n_hours_end_follow_up: 8760

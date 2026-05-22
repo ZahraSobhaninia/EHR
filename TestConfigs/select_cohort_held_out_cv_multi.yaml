@@ -6,13 +6,14 @@ mode: multi_task
 
 paths:
   features: "./outputs/run1/features"
+  initial_pids: "./outputs/run1/tokenized/pids_held_out.pt"
   outcomes: "./example_data/outcomes/multi"
   outcome_names:
     - Mortality
     - ARF
   exposure: "exposure.csv"
   outcome: "outcome.csv"
-  cohort: "./outputs/cv_multi/cohort"
+  cohort: "./outputs/cv_multi/held_out/cohort"
 
 selection:
   exclude_prior_outcomes: true
@@ -26,5 +27,5 @@ index_date:
   relative:
     n_hours_from_exposure: 0
 
-cv_folds: 2
-test_ratio: 0.1
+cv_folds: 1
+test_ratio: 1

@@ -1,0 +1,40 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: multi_task
+tasks:
+  - Mortality
+  - ARF
+
+paths:
+  prepared_data: "./outputs/cv_multi/prepared_data"
+  pretrain_model: "./outputs/run1/pretrain/model"
+  model: "./outputs/cv_multi/model"
+
+evaluate: false
+
+model: {}
+
+trainer_args:
+  batch_size: 8
+  effective_batch_size: 8
+  epochs: 2
+  info: false
+  early_stopping: false
+  save_representations: false
+  shuffle: true
+  sampler_function: null
+  loss_function:
+    _target_: corebehrt.modules.trainer.losses.FocalLoss
+    alpha: 0.25
+    gamma: 1
+    use_pos_weight: true
+
+optimizer:
+  lr: 5e-4
+  eps: 1e-6
+
+metrics:
+  roc_auc:
+    _target_: corebehrt.modules.monitoring.metrics.ROC_AUC
