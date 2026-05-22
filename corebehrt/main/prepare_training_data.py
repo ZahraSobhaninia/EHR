@@ -50,7 +50,9 @@ def main_prepare_data(config_path):
         logger = logging.getLogger("prepare finetune data")
         logger.info("Preparing finetune data")
         # Prepare data
-        _ = DatasetPreparer(cfg).prepare_finetune_data(mode="tuning")
+        evaluation_mode = cfg.data.get("evaluation_mode", "cv")
+        finetune_mode = "tuning" if evaluation_mode == "cv" else "train"
+        _ = DatasetPreparer(cfg).prepare_finetune_data(mode=finetune_mode)
 
         # Save splits from cohort selection
         folds_path = get_splits_path(cfg.paths)

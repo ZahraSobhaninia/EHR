@@ -2,14 +2,18 @@ logging:
   level: INFO
   path: ./outputs/logs
 
-mode: single_task
+mode: multi_task
 
 paths:
   features: "./outputs/run1/features"
-  initial_pids: "./outputs/run1/tokenized/pids_train.pt"
-  outcome: "./example_data/outcomes/outcome.csv"
-  exposure: "./example_data/outcomes/exposure.csv"
-  cohort: "./outputs/oot_single/cohort"
+  initial_pids: "./outputs/run1/tokenized/pids_held_out.pt"
+  outcomes: "./example_data/outcomes/multi"
+  outcome_names:
+    - Mortality
+    - ARF
+  exposure: "exposure.csv"
+  outcome: "outcome.csv"
+  cohort: "./outputs/oot_multi/held_out/cohort"
 
 selection:
   exclude_prior_outcomes: true
@@ -24,4 +28,4 @@ index_date:
     n_hours_from_exposure: 0
 
 cv_folds: 1
-test_ratio: 0
+test_ratio: 1

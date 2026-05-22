@@ -1,0 +1,32 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: single_task
+
+paths:
+  prepared_data: "./outputs/oot_single/prepared_data"
+  pretrain_model: "./outputs/run1/pretrain/model"
+  model: "./outputs/oot_single/model"
+
+evaluate: false
+
+model: {}
+
+trainer_args:
+  batch_size: 8
+  effective_batch_size: 8
+  epochs: 2
+  info: false
+  early_stopping: false
+  save_representations: false
+  shuffle: true
+  sampler_function: null
+
+optimizer:
+  lr: 5e-4
+  eps: 1e-6
+
+metrics:
+  roc_auc:
+    _target_: corebehrt.modules.monitoring.metrics.ROC_AUC

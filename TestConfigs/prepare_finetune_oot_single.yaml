@@ -1,0 +1,23 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: single_task
+
+paths:
+  features: "./outputs/run1/features"
+  tokenized: "./outputs/run1/tokenized"
+  cohort: "./outputs/oot_single/cohort"
+  outcome: "./example_data/outcomes/outcome.csv"
+  prepared_data: "./outputs/oot_single/prepared_data"
+
+data:
+  type: "finetune"
+  evaluation_mode: oot
+  truncation_len: 512
+  min_len: 1
+
+outcome:
+  n_hours_censoring: 87600
+  n_hours_start_follow_up: 0
+  n_hours_end_follow_up: 8760
