@@ -30,10 +30,12 @@ def inference_fold(
         test_dataset=test_data,  # test only after training
         args=cfg.trainer_args,
         cfg=cfg,
+        run_folder=fold_folder,
     )
     logits_tensor, targets_tensor, embeddings_tensor = evaluater.inference_loop(
         return_embeddings=return_embeddings
     )
+    evaluater.explain_loop()
     probas = torch.sigmoid(logits_tensor).numpy()
 
     return probas, embeddings_tensor

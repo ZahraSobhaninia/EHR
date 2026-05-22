@@ -60,7 +60,12 @@ class ClassifierGRU_AttnMLP(nn.Module):
 
 
         mask = mask.to(out.dtype).unsqueeze(-1).to(device)  # (B, T, 1)
-
+        if mask.shape[1] != out.shape[1]:
+            if mask.shape[1] < out.shape[1]:
+                pad = torch.zeros(mask.shape[0], out.shape[1] - mask.shape[1], 1, dtype=mask.dtype, device=mask.device)
+                mask = torch.cat([mask, pad], dim=1)
+            else:
+                mask = mask[:, :out.shape[1], :]
         # attention scores: (B, T, heads)
         attn_scores = self.attn(out)
         attn_scores = attn_scores.masked_fill(mask == 0, -1e4)

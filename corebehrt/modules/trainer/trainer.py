@@ -668,3 +668,159 @@ class EHRTrainer:
         if self.args.get("reset_patience_after_unfreeze", True):
             self.early_stopping_counter = 0
             self.log("Reset early stopping counter after unfreezing")
+
+    def explain_loop(self) -> None:
+        cfg_exp = getattr(self.cfg, "explainability", None)
+        if cfg_exp is None or not cfg_exp.enabled:
+            return
+        if self.test_dataset is None:
+            self.log("No test dataset for explainability")
+            return
+
+        self.log("Starting explainability...")
+        self.model.eval()
+
+        save_dir = os.path.join(self.cfg.paths.get("predictions", self.run_folder), "explainability")
+        os.makedirs(save_dir, exist_ok=True)
+        methods = cfg_exp.methods if hasattr(cfg_exp, "methods") else {}
+        dataloader = self.get_dataloader(self.test_dataset, mode="test")
+
+        all_logits, all_targets, all_attn, all_pids = [], [], [], []
+
+        if methods.get("gru_attention", False):
+            self.log("Collecting GRU attention weights...")
+            supports_attn = True
+
+            with torch.no_grad():
+                for batch in get_tqdm(dataloader):
+                    self.batch_to_device(batch)
+                    with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16):
+                        outputs = self.model(batch)
+
+                    hidden = outputs.last_hidden_state.float()
+                    mask   = batch["attention_mask"]
+
+                    try:
+                        _, attn = self.model.cls(hidden, mask, return_attention=True)
+                        all_attn.append(attn.cpu())
+                    except TypeError as e:
+                        self.log(f"Head does not support return_attention — skipping: {e}")
+                        supports_attn = False
+                        break
+
+                    all_logits.append(outputs.logits.float().cpu())
+                    all_targets.append(batch["target"].cpu())
+                    if "patient_id" in batch:
+                        all_pids.append(batch["patient_id"].cpu())
+
+            if supports_attn and all_attn:
+                data = {
+                    "logits":  torch.cat(all_logits).view(-1),
+                    "targets": torch.cat(all_targets).view(-1),
+                    "attention": torch.cat(all_attn),
+                }
+                if all_pids:
+                    data["patient_ids"] = torch.cat(all_pids)
+                torch.save(data, os.path.join(save_dir, "gru_attention.pt"))
+                self.log(f"Attention saved → {save_dir}/gru_attention.pt")
+
+        if methods.get("shap", False):
+            self._run_shap(cfg_exp, save_dir, dataloader)
+
+    def _run_shap(self, cfg_exp, save_dir, dataloader) -> None:
+        try:
+            import shap
+            import numpy as np
+        except ImportError:
+            self.log("shap not installed — run: pip install shap")
+            return
+
+        shap_cfg = cfg_exp.shap if hasattr(cfg_exp, "shap") else {}
+        n_bg = shap_cfg.get("background_samples", 200)
+        explain_pos = shap_cfg.get("explain_all_positives", True)
+        n_neg = shap_cfg.get("explain_negative_samples", 200)
+
+        all_concepts, all_targets, first_batch = [], [], None
+        for batch in dataloader:
+            if first_batch is None:
+                first_batch = {k: v.clone() for k, v in batch.items()}
+            all_concepts.append(batch["concept"].numpy())
+            all_targets.append(batch["target"].numpy())
+        max_len = max(c.shape[1] for c in all_concepts)
+        all_concepts = [
+            np.pad(c, ((0, 0), (0, max_len - c.shape[1])), mode='constant')
+            for c in all_concepts
+        ]
+        concepts = np.concatenate(all_concepts)
+        targets  = np.concatenate(all_targets)
+
+        pos_idx = np.where(targets == 1)[0]
+        neg_idx = np.where(targets == 0)[0]
+        n_each  = n_bg // 2
+        bg_idx  = np.concatenate([
+            pos_idx[:n_each],
+            np.random.choice(neg_idx, min(n_each, len(neg_idx)), replace=False),
+        ])
+        background = concepts[bg_idx]
+
+        if explain_pos:
+            exp_idx = np.concatenate([
+                pos_idx,
+                np.random.choice(neg_idx, min(n_neg, len(neg_idx)), replace=False),
+            ])
+        else:
+            exp_idx = np.arange(len(concepts))
+        explain_data = concepts[exp_idx]
+
+        ref = {k: v[:1].to(self.device) for k, v in first_batch.items()}
+        fixed_len = ref["concept"].shape[1]  
+        background = background[:, :fixed_len]
+        explain_data = explain_data[:, :fixed_len]
+        def predict_fn(concept_array):
+            if concept_array.ndim == 1:
+                concept_array = concept_array.reshape(1, -1)
+            curr_len = concept_array.shape[1]
+            if curr_len < fixed_len:
+                concept_array = np.pad(concept_array, ((0,0),(0, fixed_len-curr_len)), mode='constant')
+            else:
+                concept_array = concept_array[:, :fixed_len]
+            results = []
+            for i in range(0, len(concept_array), 32):
+                chunk = torch.tensor(
+                    concept_array[i : i + 32], dtype=torch.long
+                ).to(self.device)
+                seq_len = chunk.shape[1]
+                b = {}
+                for k, v in ref.items():
+                    if v.dim() == 2:
+                        if v.shape[1] >= seq_len:
+                            b[k] = v.expand(len(chunk), -1)[:, :seq_len].clone()
+                        else:
+                            pad_size = seq_len - v.shape[1]
+                            pad = torch.zeros(1, pad_size, dtype=v.dtype, device=v.device)
+                            expanded = v.expand(len(chunk), -1)
+                            b[k] = torch.cat([expanded, pad.expand(len(chunk), -1)], dim=1)
+                    else:
+                        b[k] = v.expand(len(chunk)).clone()
+                b["concept"] = chunk
+                b["attention_mask"] = (chunk != 0).long()
+                with torch.no_grad():
+                    out = self.model(b)
+                probs = torch.sigmoid(out.logits).float().cpu().numpy().flatten()
+                results.append(probs)
+            return np.concatenate(results)
+
+        self.log(f"Running SHAP — explain={len(explain_data)}, background={len(background)}")
+        explainer = shap.KernelExplainer(predict_fn, background)
+        shap_vals = explainer.shap_values(explain_data, nsamples="auto")
+
+        torch.save(
+            {
+                "shap_values": torch.tensor(shap_vals),
+                "concepts":    torch.tensor(explain_data),
+                "targets":     torch.tensor(targets[exp_idx]),
+                "patient_idx": torch.tensor(exp_idx),
+            },
+            os.path.join(save_dir, "shap_values.pt"),
+        )
+        self.log(f"SHAP saved → {save_dir}/shap_values.pt")

@@ -1,0 +1,31 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: single_task
+
+paths:
+  model: "./outputs/run1/cv_single/model"
+  folds_dir: "./outputs/run1/cv_single/prepared_data"
+  test_data_dir: "./outputs/run1/cv_single/held_out/prepared_data"
+  predictions: "./outputs/run1/cv_single/predictions"
+
+test_batch_size: 8
+return_embeddings: false
+explainability:
+  enabled: true
+  methods:
+    shap: true
+    gru_attention: false
+  shap:
+    background_samples: 10
+    background_balanced: true
+    explain_all_positives: false
+    explain_positive_samples: 5
+    explain_negative_samples: 5
+
+metrics:
+  roc_auc:
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc:
+    _target_: sklearn.metrics.average_precision_score
