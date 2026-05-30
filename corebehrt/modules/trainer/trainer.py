@@ -725,7 +725,7 @@ class EHRTrainer:
                 self.log(f"Attention saved → {save_dir}/gru_attention.pt")
 
         if methods.get("shap", False):
-            self._run_shap(cfg_exp, save_dir, dataloader)
+            self._run_integrated_gradients(cfg_exp, save_dir, dataloader)
 
     def _run_shap(self, cfg_exp, save_dir, dataloader) -> None:
         try:
@@ -824,3 +824,141 @@ class EHRTrainer:
             os.path.join(save_dir, "shap_values.pt"),
         )
         self.log(f"SHAP saved → {save_dir}/shap_values.pt")
+
+    def _run_integrated_gradients(self, cfg_exp, save_dir, dataloader) -> None:
+        try:
+            from captum.attr import IntegratedGradients
+            import numpy as np
+        except ImportError:
+            self.log("captum not installed — run: pip install captum")
+            return
+
+        shap_cfg = cfg_exp.shap if hasattr(cfg_exp, "shap") else {}
+        explain_all_positives = shap_cfg.get("explain_all_positives", True)
+        n_neg = shap_cfg.get("explain_negative_samples", 100)
+
+        # ── 1. collect all data ──────────────────────────────────────────
+        all_concepts, all_ages, all_abspos, all_segments, all_masks, all_targets = [], [], [], [], [], []
+        for batch in dataloader:
+            all_concepts.append(batch["concept"].cpu())
+            all_ages.append(batch["age"].cpu())
+            all_abspos.append(batch["abspos"].cpu())
+            all_segments.append(batch["segment"].cpu())
+            all_masks.append(batch["attention_mask"].cpu())
+            all_targets.append(batch["target"].cpu())
+
+        max_len = max(c.shape[1] for c in all_concepts)
+
+        def pad_to(tensor, max_len, pad_val=0):
+            diff = max_len - tensor.shape[1]
+            if diff == 0:
+                return tensor
+            pad = torch.full((tensor.shape[0], diff), pad_val, dtype=tensor.dtype)
+            return torch.cat([tensor, pad], dim=1)
+
+        concepts = torch.cat([pad_to(c, max_len, 0) for c in all_concepts])
+        ages     = torch.cat([pad_to(a, max_len, 0) for a in all_ages])
+        abspos   = torch.cat([pad_to(p, max_len, 0) for p in all_abspos])
+        segments = torch.cat([pad_to(s, max_len, 0) for s in all_segments])
+        masks    = torch.cat([pad_to(m, max_len, 0) for m in all_masks])
+        targets  = torch.cat(all_targets).view(-1)
+        # ── 2. select samples ───────────────────────────────────────────
+        pos_idx = (targets == 1).nonzero(as_tuple=True)[0]
+        neg_idx = (targets == 0).nonzero(as_tuple=True)[0]
+
+        exp_pos = pos_idx if explain_all_positives else pos_idx[:shap_cfg.get("explain_positive_samples", len(pos_idx))]
+        neg_sample = neg_idx[torch.randperm(len(neg_idx))[:min(n_neg, len(neg_idx))]]
+        exp_idx = torch.cat([exp_pos, neg_sample])
+
+        self.log(f"IG — {len(exp_pos)} positives + {len(neg_sample)} negatives")
+
+        # ── 3. detect single vs multi-task ──────────────────────────────
+        is_multitask = hasattr(self.model, "task_heads")
+        task_names   = self.cfg.get("tasks", ["outcome"]) if is_multitask else ["outcome"]
+
+        # ── 4. forward function ─────────────────────────────────────────
+        self.model.train()
+        for module in self.model.modules():
+            if isinstance(module, torch.nn.Dropout):
+                module.eval()
+        emb_layer = self.model.embeddings
+
+        def forward_fn(inputs_embeds, attention_mask, task_idx=0):
+    # match the forward function of the model, using inputs_embeds instead of input_ids 
+            batch_size = inputs_embeds.shape[0]
+            attn = attention_mask.expand(batch_size, -1)
+            fake_batch = {"attention_mask": attn}
+            with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16):
+                outputs = self.model(fake_batch, inputs_embeds=inputs_embeds)
+                hidden  = outputs.last_hidden_state
+                if is_multitask:
+                    logits = self.model.task_heads[task_names[task_idx]](hidden, attn)
+                else:
+                    logits = self.model.cls(hidden, attn)
+            if logits.dim() > 1 and logits.shape[1] > 1:
+                return torch.sigmoid(logits[:, task_idx].float())
+            return torch.sigmoid(logits.float().view(-1))
+        # ── 5. run IG ───────────────────────────────────────────────────
+        results = {}
+        for task_idx, task_name in enumerate(task_names):
+            self.log(f"Running IG for task: {task_name}")
+
+            concept_attrs_list, age_attrs_list, abspos_attrs_list, segment_attrs_list = [], [], [], []
+
+            for i in get_tqdm(exp_idx):
+                i = i.item()
+                c = concepts[i:i+1].to(self.device)
+                a = ages[i:i+1].to(self.device)
+                p = abspos[i:i+1].to(self.device)
+                s = segments[i:i+1].to(self.device)
+                m = masks[i:i+1].to(self.device)
+
+                emb = emb_layer(input_ids=c, segments=s, age=a, abspos=p)
+                baseline = torch.zeros_like(emb)
+
+                ig = IntegratedGradients(lambda e, m=m, t=task_idx: forward_fn(e, m, t))
+                attrs = ig.attribute(
+                    emb,
+                    baselines=baseline,
+                    n_steps=50,
+                ).squeeze(0).sum(-1).detach().cpu()
+
+                with torch.no_grad():
+                    c_emb = emb_layer.concept_embeddings(c).squeeze(0).sum(-1).cpu().abs()
+                    a_emb = emb_layer.age_embeddings(a).squeeze(0).sum(-1).cpu().abs()
+                    p_emb = emb_layer.abspos_embeddings(p).squeeze(0).sum(-1).cpu().abs()
+                    s_emb = emb_layer.segment_embeddings(s).squeeze(0).sum(-1).cpu().abs()
+                    total = (c_emb + a_emb + p_emb + s_emb).clamp(min=1e-9)
+
+                concept_attrs_list.append((attrs * c_emb / total).numpy())
+                age_attrs_list.append((attrs * a_emb / total).numpy())
+                abspos_attrs_list.append((attrs * p_emb / total).numpy())
+                segment_attrs_list.append((attrs * s_emb / total).numpy())
+
+            results[task_name] = {
+                "concept_attributions":  np.stack(concept_attrs_list),
+                "age_attributions":      np.stack(age_attrs_list),
+                "abspos_attributions":   np.stack(abspos_attrs_list),
+                "segment_attributions":  np.stack(segment_attrs_list),
+            }
+
+        # ── 6. save ──────────────────────────────────────────────────────
+        results_tensor = {}
+        for task_name, res in results.items():
+            results_tensor[task_name] = {
+                k: torch.tensor(v) for k, v in res.items()
+            }
+
+        torch.save(
+            {
+                "concepts":    concepts[exp_idx],
+                "ages":        ages[exp_idx],
+                "targets":     targets[exp_idx],
+                "patient_idx": exp_idx,
+                "task_names":  task_names,
+                "results":     results_tensor,
+            },
+            os.path.join(save_dir, "ig_values.pt"),
+        )
+        self.log(f"IG saved → {save_dir}/ig_values.pt")
+        self.model.eval()

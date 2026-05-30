@@ -106,12 +106,15 @@ class CorebehrtEncoder(ModernBertModel):
         #Each event is converted independently and has no connection to the other events.
         #"diabetes" → [0.2, -0.5, 1.1, 0.7]
         
-        inputs_embeds = self.embeddings(
-            input_ids=batch[CONCEPT_FEAT],
-            segments=batch[SEGMENT_FEAT],
-            age=batch[AGE_FEAT],
-            abspos=batch[ABSPOS_FEAT],
-        )
+        if "inputs_embeds" in kwargs:
+            inputs_embeds = kwargs.pop("inputs_embeds")
+        else:
+            inputs_embeds = self.embeddings(
+                input_ids=batch[CONCEPT_FEAT],
+                segments=batch[SEGMENT_FEAT],
+                age=batch[AGE_FEAT],
+                abspos=batch[ABSPOS_FEAT],
+            )
         #Attehtion operation:
         #The model looks at the whole sequence of events and decides which ones are important to focus
         return super().forward(
