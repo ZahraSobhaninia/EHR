@@ -264,7 +264,8 @@ class BinaryOutcomeDataset(Dataset):
             AGE_FEAT: torch.tensor(patient.ages, dtype=torch.float),
             ATTENTION_MASK: attention_mask,
             TARGET: target,
-            "patient_id": torch.tensor(int(patient.pid), dtype=torch.long)
+            "patient_id": torch.tensor(int(patient.pid), dtype=torch.long),
+            "is_finetune": torch.tensor(True)
         }
         return sample
 

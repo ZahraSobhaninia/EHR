@@ -9,6 +9,9 @@ def dynamic_padding(batch: list) -> dict:
             if tensor_field.dim() == 0:
                 continue
             if key == "target":
+                is_finetune = batch[0].get("is_finetune", torch.tensor(False)).item()
+                if is_finetune:
+                    continue
                 if tensor_field.dim() == 1 and tensor_field.shape[0] == seq_len:
                     filler = torch.full((diff,), -100, dtype=tensor_field.dtype)
                     sample[key] = torch.cat([tensor_field, filler], dim=0)
@@ -18,9 +21,5 @@ def dynamic_padding(batch: list) -> dict:
                 sample[key] = torch.cat([tensor_field, filler], dim=0)
     collated = {}
     for key in batch[0].keys():
-        try:
-            collated[key] = torch.stack([sample[key] for sample in batch], dim=0)
-        except RuntimeError as e:
-            sizes = [sample[key].shape for sample in batch]
-            raise RuntimeError(f"stack failed for key='{key}', shapes={sizes}") from e
+        collated[key] = torch.stack([sample[key] for sample in batch], dim=0)
     return collated
