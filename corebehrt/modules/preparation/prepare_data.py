@@ -324,7 +324,15 @@ class DatasetPreparer:
                 'vocab_size': len(self.vocab),
             }
 
-        finetune_stats = {'summary': summary}
+        per_patient = {
+            str(p.pid): {
+                'seq_length': len(p.concepts),
+                'unique_concepts': len(set(p.concepts)),
+                'outcome': p.outcome if isinstance(p.outcome, dict) else int(p.outcome)
+            }
+            for p in data.patients
+        }
+        finetune_stats = {'summary': summary, 'per_patient': per_patient}
         with open(join(self.processed_dir, 'finetune_stats.json'), 'w') as f:
             json.dump(finetune_stats, f, indent=2)
         logger.info(f"Saved finetune stats: {finetune_stats['summary']}")

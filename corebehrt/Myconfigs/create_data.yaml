@@ -2,8 +2,10 @@ logging:
   level: INFO
   path: ./outputs/logs
 
+evaluation_mode: cv  # cv or oot
+
 paths:
-  data: "azureml://datastores/researcher_data/paths/Zahra/032026/Data_OOT/MEDS_MD/data"
+  data: "azureml://datastores/researcher_data/paths/Zahra/022026/Data_OOT/MEDS_MD/data"
 
       #"azureml://datastores/researcher_data/paths/Zahra/Data09-2025/MEDS_wholeData/MD/data"
 

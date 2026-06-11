@@ -1,0 +1,31 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+  model: "dummy"  
+  folds_dir: "dummy"    # "researcher_data:Zahra/CoreBehrt/MDP/3_Finetune/ARF/Data/FinetuneData/811"     #Finetune Data
+  test_data_dir:  "dummy"   #"researcher_data:Zahra/CoreBehrt/MDP/4_Evaluate/ARF/Data/Heldout_Data/811"  
+
+  run_name: "evaluate"
+
+  predictions: "researcher_data:Zahra/062026/CoreBehrt_OOT/MDPS/3_Holdout/PNEUMONIA/Predictions/UniversalModel/01"
+  
+#UNPREADM
+#SSSI
+#PNEUMONIA
+  
+
+test_batch_size: 128
+
+return_embeddings: True
+
+metrics:
+  roc_auc: 
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc: 
+    _target_: sklearn.metrics.average_precision_score
+
+save_info: 
+  sequence_length: 
+    _target_: corebehrt.main.helper.evaluate_finetune.get_sequence_length

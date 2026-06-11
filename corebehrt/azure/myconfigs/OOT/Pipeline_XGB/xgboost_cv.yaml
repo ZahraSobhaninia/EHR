@@ -1,0 +1,33 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+## INPUTS
+  prepared_data: "dummy"  
+## OUTPUTS
+  model: "researcher_data:Zahra/062026/XGB_CV/MDPS/PRI/Train"       # Save model/outputs to this folder  
+
+
+model:
+  objective: binary:logistic
+  eval_metric: auc
+  max_depth: 2
+  learning_rate: 0.1
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 50
+  seed: 42
+  scale_pos_weight: 50
+  tree_method: hist
+
+trainer_args:
+  num_boost_round: 50
+  early_stopping_rounds: 10
+  verbose_eval: 10
+  
+metrics:
+  roc_auc: 
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc: 
+    _target_: sklearn.metrics.average_precision_score  

@@ -1,0 +1,30 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: single_task
+
+paths:
+  features: 'researcher_data:Zahra/062026/Corebehrt_CV/MDP/0_CreateData/features'
+  tokenized: "researcher_data:Zahra/062026/Corebehrt_CV/MDP/0_CreateData/tokenized"
+  cohort: "researcher_data:Zahra/062026/Corebehrt_CV/MDP/3_Holdout/PRI/Data/SelectCohort"
+  outcomes: 'researcher_data:Zahra/062026/Corebehrt_CV/CreateOutcome/PRI'
+  outcome: outcome.csv
+  prepared_data: "researcher_data:Zahra/062026/Corebehrt_CV/MDP/3_Holdout/PRI/Data/HeldoutData"
+
+data:
+  type: "test"
+  test_modes: ["held_out"]
+  truncation_len: 512
+  min_len: 2
+
+outcome:
+  n_hours_censoring: 0
+  n_hours_start_follow_up: 0
+  n_hours_end_follow_up: 720
+
+
+   
+
+
+

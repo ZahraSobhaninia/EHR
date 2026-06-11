@@ -1,0 +1,40 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: single_task
+
+#UNPREADM
+#SSSI
+paths:
+  model: "researcher_data:Zahra/062026/CoreBehrt_OOT/MDPS/2_Finetune/SSSI/UniversalModel_1/05"         #UniversalModel
+  folds_dir: "researcher_data:Zahra/062026/CoreBehrt_OOT/MDPS/2_Finetune/SSSI/Data/Finetunedata"  
+  test_data_dir:  "researcher_data:Zahra/062026/CoreBehrt_OOT/MDPS/3_Holdout/SSSI/Data/Holdout_Data"  
+  run_name: "evaluate"
+
+  predictions: "researcher_data:Zahra/062026/CoreBehrt_OOT/MDPS/3_Holdout/SSSI/Predictions/UniversalModel_1/05"
+
+test_batch_size: 128
+
+return_embeddings: True
+
+#explainability:
+#  enabled: true
+#  methods:
+#    shap: true
+#    gru_attention: false
+#  shap:
+#    explain_all_positives: true
+#    explain_negative_samples: 153
+
+
+metrics:
+  roc_auc: 
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc: 
+    _target_: sklearn.metrics.average_precision_score
+
+save_info: 
+  sequence_length: 
+    _target_: corebehrt.main.helper.evaluate_finetune.get_sequence_length
+

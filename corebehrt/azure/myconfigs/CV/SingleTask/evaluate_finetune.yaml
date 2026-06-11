@@ -1,0 +1,34 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: single_task
+
+paths:
+  run_name: "evaluate"
+  model: "researcher_data:Zahra/062026/Corebehrt_CV/MDS/2_Finetune/PRI/Model/02"  
+  folds_dir: "researcher_data:Zahra/062026/Corebehrt_CV/MDS/2_Finetune/PRI/Data/Finetunedata"
+  test_data_dir: "researcher_data:Zahra/062026/Corebehrt_CV/MDS/3_Holdout/PRI/Data/HeldoutData"
+  predictions: "researcher_data:Zahra/062026/Corebehrt_CV/MDS/3_Holdout/PRI/Predictions/02"
+
+test_batch_size: 128  
+
+return_embeddings: True
+
+#explainability:
+#  enabled: true
+#  methods:
+#    shap: true
+#    gru_attention: false
+#  shap:
+#    background_samples: 10
+#    background_balanced: true
+#    explain_all_positives: false
+#    explain_positive_samples: 5
+#    explain_negative_samples: 5
+
+metrics:
+  roc_auc:
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc:
+    _target_: sklearn.metrics.average_precision_score

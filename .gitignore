@@ -27,3 +27,11 @@ __pycache__/
 __pycache__/
 Results_032026/
 *.pyc
+example_data/
+**/temp_data/
+**/temp/
+**/__pycache__/
+*.pyc
+*.pkl
+corebehrt/Myconfigs/CreateOutcome/temp/
+corebehrt/Myconfigs/CreateOutcome/temp_data/

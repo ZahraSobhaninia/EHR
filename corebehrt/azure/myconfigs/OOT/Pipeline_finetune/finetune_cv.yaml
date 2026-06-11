@@ -1,0 +1,87 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+paths:
+  model: "researcher_data:Zahra/062026/CoreBehrt_OOT/MDPS/2_Finetune/PNEUMONIA/UniversalModel/02"
+evaluate: false
+
+model:
+  cls:
+    _target_: ehr2vec.model.heads.ClassifierGRU
+    bidirectional: true
+
+trainer_args:
+  loss_function:
+    _target_: corebehrt.modules.trainer.losses.FocalLoss
+    alpha: 0.98
+    gamma: 1
+    use_pos_weight: true
+
+  sampler_function:
+    _target_: corebehrt.modules.trainer.utils.Sampling.inverse_sqrt
+
+
+  # loss_weight_function:
+  #   _target_: corebehrt.modules.trainer.utils.PositiveWeight.effective_n_samples
+
+  batch_size: 128
+  val_batch_size: 256
+  effective_batch_size: 512
+
+  epochs: 20
+  info: true
+  gradient_clip:
+    clip_value: 1
+  shuffle: true
+  checkpoint_frequency: 1
+  early_stopping: 15
+  stopping_criterion: roc_auc  # pr_auc 
+
+  # Freezing options
+  n_layers_to_freeze: 3  
+  unfreeze_on_plateau: true
+  unfreeze_at_epoch: 7   
+  plateau_threshold: 0.003
+  reset_patience_after_unfreeze: true
+
+  save_representations: true
+  save_labels: true
+  representation_types: ["mean", "cls", "max", "last"]
+  task: finetune
+
+optimizer:
+  lr: 1e-5   
+  eps: 1e-8
+  weight_decay: 0.001
+
+scheduler:
+  _target_: transformers.get_cosine_schedule_with_warmup
+  num_warmup_steps: 566   # 849  ~5% of steps
+  num_training_steps: 5660     # 8490
+
+# ARF
+# total: 180,924 - val (20%): 36,185 - train (80%): 144,739
+# steps_per_epoch = 144,739 / 512 = 283
+# num_training_steps = 283 × 20 = 5,660
+# num_warmup_steps = 283
+
+metrics:
+  accuracy:
+    _target_: corebehrt.modules.monitoring.metrics.Accuracy
+    threshold: 0.1
+  roc_auc:
+    _target_: corebehrt.modules.monitoring.metrics.ROC_AUC
+  pr_auc:
+    _target_: corebehrt.modules.monitoring.metrics.PR_AUC
+  precentage_positives:
+    _target_: corebehrt.modules.monitoring.metrics.Percentage_Positives
+  mean_probability:
+    _target_: corebehrt.modules.monitoring.metrics.Mean_Probability
+  true_positives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Positives
+  true_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Negatives
+  false_positives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Positives
+  false_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Negatives

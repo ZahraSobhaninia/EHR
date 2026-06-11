@@ -1,0 +1,31 @@
+# evaluate_heldout_mt.yaml
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: multi_task
+
+tasks:
+  - Mortality
+  - ARF
+  - Bleed
+  - PRI
+
+paths:
+
+  model: 'researcher_data:Zahra/052026/CoreBehrt_OOT/MultiTask_4/MDPS/2_Finetune/Models/02'
+
+  folds_dir: 'researcher_data:Zahra/052026/CoreBehrt_OOT/MultiTask_4/MDPS/2_Finetune/Data/PrepareData'
+
+  test_data_dir: 'researcher_data:Zahra/052026/CoreBehrt_OOT/MultiTask_4/MDPS/3_Heldout/Data/PrepareData'
+  
+  predictions: 'researcher_data:Zahra/052026/CoreBehrt_OOT/MultiTask_4/MDPS/3_Heldout/Predictions/02'
+
+test_batch_size: 128
+return_embeddings: true
+
+metrics:
+  roc_auc:
+    _target_: sklearn.metrics.roc_auc_score
+  pr_auc:
+    _target_: sklearn.metrics.average_precision_score

@@ -50,8 +50,13 @@ def main_prepare_data(config_path):
         logger = logging.getLogger("prepare finetune data")
         logger.info("Preparing finetune data")
         # Prepare data
-        evaluation_mode = cfg.data.get("evaluation_mode", "cv")
-        finetune_mode = "tuning" if evaluation_mode == "cv" else "train"
+        evaluation_mode = cfg.data.get("evaluation_mode", "oot")
+        if evaluation_mode == "cv":
+            finetune_mode = "tuning"
+        elif evaluation_mode == "oot":
+            finetune_mode = "train"
+        else:
+            raise ValueError(f"Unsupported evaluation_mode: {evaluation_mode}. Use 'cv' or 'oot'.")
         _ = DatasetPreparer(cfg).prepare_finetune_data(mode=finetune_mode)
 
         # Save splits from cohort selection

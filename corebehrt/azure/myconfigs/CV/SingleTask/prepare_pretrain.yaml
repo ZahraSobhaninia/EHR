@@ -1,0 +1,21 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+  features: "azureml://datastores/researcher_data/paths/Zahra/062026/Corebehrt_CV/MDPS/0_CreateData/features"
+  tokenized: "azureml://datastores/researcher_data/paths/Zahra/062026/Corebehrt_CV/MDPS/0_CreateData/tokenized" 
+  prepared_data: "researcher_data:Zahra/062026/Corebehrt_CV/MDPS/1_Pretrain/Data/"
+
+data:
+  type: "pretrain"
+  evaluation_mode: cv
+  val_ratio: 0.2
+  truncation_len: 512
+  min_len: 2
+  predefined_splits: false
+
+  cutoff_date:
+    year: 2020
+    month: 1
+    day: 1

@@ -1,0 +1,89 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: single_task
+
+evaluate: false
+
+paths:
+  prepared_data: researcher_data:Zahra/062026/Corebehrt_CV/MDS/2_Finetune/PRI/Data/Finetunedata
+  pretrain_model: researcher_data:Zahra/062026/Corebehrt_CV/MDS/1_Pretrain/Model
+  model: "researcher_data:Zahra/062026/Corebehrt_CV/MDS/2_Finetune/PRI/Model/02"  
+
+model:
+  cls:
+    _target_: ehr2vec.model.heads.ClassifierGRU
+    bidirectional: true
+
+optimizer:
+  eps: 1e-8
+  lr: 1e-5
+  weight_decay: 0.001
+
+
+scheduler:
+  _target_: transformers.get_cosine_schedule_with_warmup
+  num_training_steps: 1640
+  num_warmup_steps: 164
+
+trainer_args:
+  batch_size: 128
+  checkpoint_frequency: 1
+  early_stopping: 15
+  effective_batch_size: 512
+  epochs: 20
+  gradient_clip:
+    clip_value: 1
+  info: true
+
+
+  loss_function: null
+    #_target_: corebehrt.modules.trainer.losses.FocalLoss
+    #alpha: 0.998   #0.98-->mortality 0.9744->Bleed (1:38)  0.998->ARF(526)    0.998->PRI(1:44)
+    #gamma: 1
+    #use_pos_weight: true
+  n_layers_to_freeze: 3
+  plateau_threshold: 0.003
+  representation_types:
+  - mean
+  - cls
+  - max
+  - last
+  
+  reset_patience_after_unfreeze: true
+  sampler_function:
+    _target_: corebehrt.modules.trainer.utils.Sampling.inverse_sqrt
+  
+  loss_weight_function: 
+    _target_: corebehrt.modules.trainer.utils.PositiveWeight.sqrt    
+
+  save_labels: true
+  save_representations: true
+  shuffle: true
+  stopping_criterion: roc_auc
+  task: finetune
+  unfreeze_at_epoch: 7
+  unfreeze_on_plateau: true
+  val_batch_size: 256
+
+metrics:
+  accuracy:
+    _target_: corebehrt.modules.monitoring.metrics.Accuracy
+    threshold: 0.05
+  false_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Negatives
+  false_positives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Positives
+  mean_probability:
+    _target_: corebehrt.modules.monitoring.metrics.Mean_Probability
+  pr_auc:
+    _target_: corebehrt.modules.monitoring.metrics.PR_AUC
+  precentage_positives:
+    _target_: corebehrt.modules.monitoring.metrics.Percentage_Positives
+  roc_auc:
+    _target_: corebehrt.modules.monitoring.metrics.ROC_AUC
+  true_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Negatives
+  true_positives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Positives

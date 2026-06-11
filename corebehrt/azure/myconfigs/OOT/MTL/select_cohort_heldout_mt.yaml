@@ -1,0 +1,39 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: multi_task
+
+paths:
+  ### Inputs
+  features: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/0_CreateData/features'
+  
+  initial_pids: 'researcher_data:Zahra/032026/CoreBehrt_OOT/MDPS/0_CreateData/tokenized/pids_train.pt'
+
+  outcomes: 'researcher_data:Zahra/032026/CoreBehrt_OOT/CreateOutcome_Holdout'
+  outcome_names:
+    - Mortality
+    - ARF
+    - Bleed
+    - PRI
+  exposure: 'exposure.csv'
+  outcome: 'outcome.csv'
+
+  ### Outputs
+  cohort: 'researcher_data:Zahra/052026/CoreBehrt_OOT/MultiTask_4/MDPS/3_Heldout/Data/SelectCohort'
+
+selection:
+  exclude_prior_outcomes: true
+  exposed_only: true
+  age:
+    min_years: 0
+    max_years: 120
+
+index_date:
+  mode: relative
+  relative:
+    n_hours_from_exposure: 0
+
+cv_folds: 1
+test_ratio: 1
+

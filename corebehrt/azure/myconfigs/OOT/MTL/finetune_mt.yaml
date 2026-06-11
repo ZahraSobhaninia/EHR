@@ -1,0 +1,121 @@
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+paths:
+  prepared_data: 'researcher_data:Zahra/052026/CoreBehrt_OOT/MultiTask_4/MDPS/2_Finetune/Data/PrepareData'
+  pretrain_model: 'researcher_data:Zahra/052026/CoreBehrt_OOT/MDPS/1_Pretrain/Model'
+  model: 'researcher_data:Zahra/052026/CoreBehrt_OOT/MultiTask_4/MDPS/2_Finetune/Models/02'
+
+
+  #./outputs/finetuning # Save model/outputs to this folder
+  #runs: ./outputs/pretraining # Use for generating a new modeal folder
+  
+evaluate: false # evaluate best model on test sets
+
+mode: multi_task
+tasks:
+  - Mortality
+  - ARF
+  - Bleed
+  - PRI
+
+#pos_weights: {}
+
+pos_weights:
+  Mortality: 9.3     # sqrt(85.9)
+  ARF: 22.9          # sqrt(524.9)
+  Bleed: 6.2         # sqrt(38.0)
+  PRI: 44.0          # sqrt(440.8)
+      
+model:
+  cls:
+    _target_: ehr2vec.model.heads.ClassifierGRU
+    bidirectional: true
+
+trainer_args:
+
+  save_representations: true
+  save_labels: true
+  representation_types: ["mean", "cls", "max", "last"]
+  task: finetune
+    
+    
+  #loss_function: null
+
+  loss_function:
+    _target_: corebehrt.modules.trainer.losses.FocalLoss
+    alpha: 0.98
+    gamma: 1.0
+    use_pos_weight: true
+      
+       
+  #sampler_function: 
+  #  _target_: corebehrt.modules.trainer.utils.Sampling.effective_n_samples 
+    #function to calculate sample weights. ----Possible options: inverse_sqrt and effective_n_samples
+  #  _target_: corebehrt.modules.trainer.utils.Sampling.inverse_sqrt    
+   
+ # loss_weight_function: 
+ #   _target_: corebehrt.modules.trainer.utils.PositiveWeight.effective_n_samples 
+    # function to calculate positive weights. Possible options: sqrt and effective_n_samples
+
+  batch_size: 128  
+  val_batch_size: 256
+  effective_batch_size: 512
+  
+  epochs: 30 #18 for mor
+  info: true
+  gradient_clip: 
+    clip_value: 1     # 0.25 
+  shuffle: true
+  checkpoint_frequency: 1
+  early_stopping: 15           #4 for Mor      
+  stopping_criterion: roc_auc   #pr_auc   
+  
+
+  # Freezing options
+  n_layers_to_freeze: 3
+  unfreeze_on_plateau: true  #true  # unfreeze all layers if the performance is less than plateau_threshold 
+  unfreeze_at_epoch: 7   #10 # if unfrezze_on_plateau is true, whichever condition is met first
+  plateau_threshold: 0.003 
+  reset_patience_after_unfreeze: true # reset early stopping counter after unfreezing
+
+optimizer:
+  lr: 1e-5   #2e-5
+  eps: 1e-8
+  weight_decay: 0.001 
+
+
+scheduler:
+  _target_: transformers.get_cosine_schedule_with_warmup   #transformers.get_linear_schedule_with_warmup
+
+  num_warmup_steps: 849  #566        #283  # ~5% of steps
+  num_training_steps: 8490  #5660 
+
+metrics:
+  accuracy:
+    _target_: corebehrt.modules.monitoring.metrics.Accuracy
+    threshold: 0.05
+  roc_auc:
+    _target_: corebehrt.modules.monitoring.metrics.ROC_AUC
+  pr_auc:
+    _target_: corebehrt.modules.monitoring.metrics.PR_AUC
+  precentage_positives:
+    _target_: corebehrt.modules.monitoring.metrics.Percentage_Positives
+
+  mean_probability:
+    _target_: corebehrt.modules.monitoring.metrics.Mean_Probability
+  true_positives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Positives
+
+  true_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.True_Negatives
+  false_positives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Positives
+
+  false_negatives:
+    _target_: corebehrt.modules.monitoring.metrics.False_Negatives
+  
+  
+
+ 

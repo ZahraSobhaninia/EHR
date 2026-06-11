@@ -1,0 +1,33 @@
+
+logging:
+  level: INFO
+  path: ./outputs/logs
+
+mode: single_task
+paths:
+
+  features: 'researcher_data:Zahra/062026/Corebehrt_CV/MDS/0_CreateData/features'
+  initial_pids: 'researcher_data:Zahra/062026/Corebehrt_CV/MDS/0_CreateData/tokenized/pids_held_out.pt'  
+  outcomes: 'researcher_data:Zahra/062026/Corebehrt_CV/CreateOutcome/PRI'
+  exposure: exposure.csv 
+  outcome: outcome.csv 
+ 
+
+  cohort: "researcher_data:Zahra/062026/Corebehrt_CV/MDS/3_Holdout/PRI/Data/SelectCohort"
+
+
+selection:
+  exclude_prior_outcomes: true 
+  exposed_only: true 
+  age:
+    min_years: 0 
+    max_years: 120 
+
+
+index_date: 
+  mode: relative 
+  relative: 
+    n_hours_from_exposure: 0
+
+cv_folds: 1 
+test_ratio: 1 
