@@ -9,8 +9,7 @@ def dynamic_padding(batch: list) -> dict:
             if tensor_field.dim() == 0:
                 continue
             if key == "target":
-                is_finetune = batch[0].get("is_finetune", torch.tensor(False)).item()
-                if is_finetune:
+                if "is_finetune" in batch[0] and batch[0]["is_finetune"].item():
                     continue
                 if tensor_field.dim() == 1 and tensor_field.shape[0] == seq_len:
                     filler = torch.full((diff,), -100, dtype=tensor_field.dtype)
