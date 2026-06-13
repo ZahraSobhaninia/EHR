@@ -344,25 +344,38 @@ class CorebehrtForMultiTaskFineTuning(CorebehrtEncoder):
         outputs = super().forward(batch, **kwargs)
         sequence_output = outputs[0]
 
-        all_logits = {}
-        for task in self.task_names:
-            all_logits[task] = self.task_heads[task](
-                sequence_output, batch[ATTENTION_MASK]
+        if self.use_relation:
+            outputs.logits = self.cls(sequence_output, batch[ATTENTION_MASK])
+            if batch.get(TARGET) is not None:
+                total_loss = 0
+                labels = batch[TARGET]
+                for i, task in enumerate(self.task_names):
+                    task_loss = self.loss_fcts[task](
+                        outputs.logits[:, i].view(-1),
+                        labels[:, i].view(-1)
+                    )
+                    total_loss += task_loss
+                outputs.loss = total_loss
+        else:
+            all_logits = {}
+            for task in self.task_names:
+                all_logits[task] = self.task_heads[task](
+                    sequence_output, batch[ATTENTION_MASK]
+                )
+
+            outputs.logits = torch.stack(
+                [all_logits[task] for task in self.task_names], dim=1
             )
 
-        outputs.logits = torch.stack(
-            [all_logits[task] for task in self.task_names], dim=1
-        )
-
-        if batch.get(TARGET) is not None:
-            total_loss = 0
-            labels = batch[TARGET]
-            for i, task in enumerate(self.task_names):
-                task_loss = self.loss_fcts[task](
-                    all_logits[task].view(-1),
-                    labels[:, i].view(-1)
-                )
-                total_loss += task_loss
-            outputs.loss = total_loss
+            if batch.get(TARGET) is not None:
+                total_loss = 0
+                labels = batch[TARGET]
+                for i, task in enumerate(self.task_names):
+                    task_loss = self.loss_fcts[task](
+                        all_logits[task].view(-1),
+                        labels[:, i].view(-1)
+                    )
+                    total_loss += task_loss
+                outputs.loss = total_loss
 
         return outputs
