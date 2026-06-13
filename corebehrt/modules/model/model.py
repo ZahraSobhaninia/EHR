@@ -11,6 +11,7 @@ This module defines customized EHR-focused BERT models built on top of ModernBer
 import logging
 from typing import Tuple
 from corebehrt.modules.trainer.losses import FocalLoss
+from corebehrt.modules.model.heads import FineTuneHead, MultiTaskHeadWithRelation
 from corebehrt.functional.modeling import attention
 import torch
 import torch.nn as nn
@@ -296,10 +297,24 @@ class CorebehrtForMultiTaskFineTuning(CorebehrtEncoder):
         
         task_names = getattr(config, 'tasks', ['mortality'])
         
-        self.task_heads = nn.ModuleDict({
-            task: FineTuneHead(hidden_size=config.hidden_size)
-            for task in task_names
-        })
+        use_relation = getattr(config, 'use_relation', False)
+        head_cfg = getattr(config, 'head', {}) or {}
+        if use_relation:
+            self.cls = MultiTaskHeadWithRelation(
+                hidden_size=config.hidden_size,
+                tasks=task_names,
+                num_layers=head_cfg.get('num_layers', 2),
+                dropout=head_cfg.get('dropout', 0.1),
+                mlp_hidden=head_cfg.get('mlp_hidden', 256),
+                attn_heads=head_cfg.get('attn_heads', 1),
+            )
+            self.use_relation = True
+        else:
+            self.task_heads = nn.ModuleDict({
+                task: FineTuneHead(hidden_size=config.hidden_size)
+                for task in task_names
+            })
+            self.use_relation = False
         
         pos_weights = getattr(config, 'pos_weights', {})
         loss_fct_cfg = getattr(config, 'loss_function', None)
