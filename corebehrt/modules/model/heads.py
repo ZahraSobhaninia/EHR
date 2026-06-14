@@ -303,7 +303,10 @@ class MultiTaskHeadWithRelation(nn.Module):
 
         logits_base = torch.cat([self.task_mlps[task](x) for task in self.tasks], dim=1)
         R_masked = self.R * self.eye_mask.to(device)
-        logits_final = logits_base + torch.matmul(logits_base, R_masked.T)
+        probs_base = torch.sigmoid(logits_base)
+        probs_final = probs_base + torch.matmul(probs_base, R_masked.T)
+        probs_final = probs_final.clamp(1e-6, 1 - 1e-6)
+        logits_final = torch.log(probs_final / (1 - probs_final))
 
         if return_attention:
             return logits_final, attn_weights.mean(dim=-1).detach().cpu()
