@@ -75,6 +75,13 @@ class Initializer:
                 add_config=add_config,
             )
             model.to(self.device)
+            if self.cfg.get("mode", "single_task") == "multi_task":
+                task_correlation = self.cfg.model.get("task_correlation", None)
+                if task_correlation is not None and hasattr(model, "cls"):
+                    import torch as _torch
+                    corr_tensor = _torch.tensor(task_correlation, dtype=_torch.float)
+                    model.cls.init_from_correlation(corr_tensor)
+                    logger.info("Initialized task relation matrix from correlation")
             return model
         else:
             raise NotImplementedError("Fine-tuning from scratch is not supported.")

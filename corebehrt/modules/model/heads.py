@@ -233,11 +233,11 @@ class MultiTaskHeadWithRelation(nn.Module):
         attn_heads: int = 1,
     ):
         super().__init__()
-        n_tasks = len(tasks)
+        assert hidden_size % 2 == 0, "Hidden size must be even for bidirectional GRU"
         self.tasks = tasks
+        n_tasks = len(tasks)
         self.h = hidden_size // 2 if bidirectional else hidden_size
 
-        # Shared GRU + Attention (همون ClassifierGRU_AttnMLP)
         self.gru = nn.GRU(
             input_size=hidden_size,
             hidden_size=self.h,
@@ -251,7 +251,6 @@ class MultiTaskHeadWithRelation(nn.Module):
         self.attn = nn.Linear(self.out_dim, attn_heads)
         self.attn_dropout = nn.Dropout(dropout)
 
-        # Task-specific MLPs
         self.task_mlps = nn.ModuleDict({
             task: nn.Sequential(
                 nn.Linear(self.out_dim, mlp_hidden),
@@ -262,10 +261,14 @@ class MultiTaskHeadWithRelation(nn.Module):
             for task in tasks
         })
 
-        # Task Relation Matrix — قابل یادگیری
         self.R = nn.Parameter(torch.zeros(n_tasks, n_tasks))
-        # diagonal رو صفر نگه میداریم (task با خودش ارتباط نداره)
-        self.register_buffer('mask', 1 - torch.eye(n_tasks))
+        self.register_buffer('eye_mask', 1 - torch.eye(n_tasks))
+
+    def init_from_correlation(self, corr_matrix):
+        corr = corr_matrix.clone().float()
+        corr.fill_diagonal_(0)
+        with torch.no_grad():
+            self.R.copy_(corr)
 
     def forward(self, hidden_states, attention_mask, return_attention=False, **_):
         lengths_cpu = attention_mask.sum(dim=1).to(torch.long).cpu()
@@ -296,14 +299,11 @@ class MultiTaskHeadWithRelation(nn.Module):
         attn_weights = torch.softmax(attn_scores, dim=1)
         attn_weights = self.attn_dropout(attn_weights)
         context = torch.einsum("bth,btd->bhd", attn_weights, out)
-        x = context.mean(dim=1)  # (B, out_dim)
+        x = context.mean(dim=1)
 
-        # Base logits برای هر task
-        logits_base = torch.cat([self.task_mlps[task](x) for task in self.tasks], dim=1)  # (B, n_tasks)
-
-        # Task Relation — اعمال matrix R
-        R_masked = self.R * self.mask.to(device)  # diagonal صفر
-        logits_final = logits_base + torch.matmul(logits_base, R_masked.T)  # (B, n_tasks)
+        logits_base = torch.cat([self.task_mlps[task](x) for task in self.tasks], dim=1)
+        R_masked = self.R * self.eye_mask.to(device)
+        logits_final = logits_base + torch.matmul(logits_base, R_masked.T)
 
         if return_attention:
             return logits_final, attn_weights.mean(dim=-1).detach().cpu()
