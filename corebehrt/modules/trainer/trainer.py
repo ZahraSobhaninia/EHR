@@ -806,7 +806,7 @@ class EHRTrainer:
                 b["attention_mask"] = (chunk != 0).long()
                 with torch.no_grad():
                     out = self.model(b)
-                probs = torch.sigmoid(out.logits).float().cpu().numpy().flatten()
+                probs = torch.sigmoid(out.logits).float().cpu().numpy() if out.logits.shape[-1] > 1 else torch.sigmoid(out.logits).float().cpu().numpy().flatten()
                 results.append(probs)
             return np.concatenate(results)
 
