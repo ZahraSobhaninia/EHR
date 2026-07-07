@@ -307,6 +307,7 @@ class CorebehrtForMultiTaskFineTuning(CorebehrtEncoder):
                 dropout=head_cfg.get('dropout', 0.1),
                 mlp_hidden=head_cfg.get('mlp_hidden', 256),
                 attn_heads=head_cfg.get('attn_heads', 1),
+                rare_tasks=getattr(config, 'rare_tasks', None),
             )
             self.use_relation = True
         else:
