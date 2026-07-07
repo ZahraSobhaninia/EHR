@@ -18,8 +18,9 @@ from corebehrt.modules.monitoring.metric_aggregation import (
 from corebehrt.modules.setup.config import Config, instantiate_class
 from corebehrt.modules.trainer.freezing import freeze_bottom_layers, unfreeze_all_layers
 from corebehrt.modules.trainer.utils import is_plateau
-
 yaml.add_representer(Config, lambda dumper, data: data.yaml_repr(dumper))
+
+from corebehrt.modules.explainability.partition_tree import get_token_groups, build_partition_tree
 
 BEST_MODEL_ID = 999  # For backwards compatibility
 DEFAULT_CHECKPOINT_FREQUENCY = 100
