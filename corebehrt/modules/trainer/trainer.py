@@ -17,10 +17,11 @@ from corebehrt.modules.monitoring.metric_aggregation import (
 )
 from corebehrt.modules.setup.config import Config, instantiate_class
 from corebehrt.modules.trainer.freezing import freeze_bottom_layers, unfreeze_all_layers
+from corebehrt.modules.trainer.pcgrad import PCGrad
 from corebehrt.modules.trainer.utils import is_plateau
 yaml.add_representer(Config, lambda dumper, data: data.yaml_repr(dumper))
 
-from corebehrt.modules.explainability.partition_tree import get_token_groups, build_partition_tree
+from corebehrt.modules.explainability.explainability import get_token_groups, build_partition_tree
 
 BEST_MODEL_ID = 999  # For backwards compatibility
 DEFAULT_CHECKPOINT_FREQUENCY = 100
@@ -727,6 +728,8 @@ class EHRTrainer:
 
         if methods.get("shap", False):
             self._run_integrated_gradients(cfg_exp, save_dir, dataloader)
+        if methods.get("partition_shap", False):          
+            self._run_partition_shap(cfg_exp, save_dir, dataloader)
 
     def _run_shap(self, cfg_exp, save_dir, dataloader) -> None:
         try:
@@ -825,6 +828,32 @@ class EHRTrainer:
             os.path.join(save_dir, "shap_values.pt"),
         )
         self.log(f"SHAP saved → {save_dir}/shap_values.pt")
+    def _run_partition_shap(self, cfg_exp, save_dir, dataloader) -> None:
+        from corebehrt.modules.explainability.explainability import get_token_groups, build_partition_tree
+
+        shap_cfg = cfg_exp.shap if hasattr(cfg_exp, "shap") else {}
+        vocab_path = shap_cfg.get("vocab_path")
+        vocab = torch.load(vocab_path, map_location="cpu")
+        id_to_code = {v: k for k, v in vocab.items()}
+
+        # از همون padding/background/explain_data logic که _run_shap داره استفاده کن
+        # (همون all_concepts, background, explain_data که بالاتر ساخته میشن)
+
+        # فقط برای یک نمونه نمایشی، groups رو از background اولین sample بساز:
+        token_ids = background[0].tolist()
+        groups = get_token_groups(token_ids, id_to_code)
+        clustering = build_partition_tree(groups)
+
+        masker = shap.maskers.Partition(background, clustering=clustering)
+        explainer = shap.explainers.Partition(predict_fn, masker)  # همون predict_fn که _run_shap داره
+        shap_vals = explainer(explain_data, max_evals=shap_cfg.get("max_evals", 500))
+
+        torch.save(
+            {"shap_values": shap_vals},
+            os.path.join(save_dir, "partition_shap_values.pt"),
+        )
+        self.log(f"PartitionSHAP saved → {save_dir}/partition_shap_values.pt")
+        
 
     def _run_integrated_gradients(self, cfg_exp, save_dir, dataloader) -> None:
         try:
