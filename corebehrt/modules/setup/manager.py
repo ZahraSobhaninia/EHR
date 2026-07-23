@@ -31,6 +31,11 @@ class ModelManager:
 
         # Restart model from other directory (if given)
         self.restart_model_path = self.check_model("restart_model", fold=fold)
+        # Fallback: if pretrain_model_path is None but path is set, use it directly
+        # This handles Azure datastore paths that are not locally accessible
+        if self.pretrain_model_path is None and self.cfg.paths.get("pretrain_model"):
+            self.pretrain_model_path = self.cfg.paths.get("pretrain_model")
+            logger.info(f"Using pretrain_model path directly: {self.pretrain_model_path}")
         cfg_path = self.cfg.paths.get("restart_model")
 
         # Update config from old model, if relevant
@@ -68,8 +73,9 @@ class ModelManager:
             path = join(path, f"fold_{fold}")
 
         if not os.path.exists(path):
-            logger.warning(f"Could not find model at path '{path}'.")
-            return None
+            logger.warning(f"Could not find model at path '{path}'. Assuming Azure mount path.")
+            # Don't return None — let Azure handle the path
+        
 
         if checkpoints and not self.check_checkpoints(path):
             logger.warning(f"No checkpoints found at path '{path}'.")
