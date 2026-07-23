@@ -95,9 +95,11 @@ class Initializer:
                 self.optimizer_state_dic_to_device(self.checkpoint["optimizer_state_dict"])
                 optimizer.load_state_dict(self.checkpoint["optimizer_state_dict"])
                 logger.info("Optimizer state loaded from checkpoint")
+                self._optimizer_loaded_from_checkpoint = True
             except ValueError:
-                # optimizer state dict size mismatch (e.g. MTL -> single-task)
+                # Size mismatch — e.g. switching from MTL to single-task
                 logger.warning("Optimizer state dict mismatch — initializing fresh optimizer")
+                self._optimizer_loaded_from_checkpoint = False
             return optimizer
         else:
             logger.info("Initializing new AdamW optimizer")
