@@ -90,11 +90,14 @@ class Initializer:
         """Initialize optimizer from checkpoint or from scratch."""
         if self.checkpoint:
             logger.info("Loading AdamW optimizer from checkpoint")
-            optimizer = AdamW(
-                model.parameters(),
-            )
-            self.optimizer_state_dic_to_device(self.checkpoint["optimizer_state_dict"])
-            optimizer.load_state_dict(self.checkpoint["optimizer_state_dict"])
+            optimizer = AdamW(model.parameters(), **self.cfg.optimizer)
+            try:
+                self.optimizer_state_dic_to_device(self.checkpoint["optimizer_state_dict"])
+                optimizer.load_state_dict(self.checkpoint["optimizer_state_dict"])
+                logger.info("Optimizer state loaded from checkpoint")
+            except ValueError:
+                # optimizer state dict size mismatch (e.g. MTL -> single-task)
+                logger.warning("Optimizer state dict mismatch — initializing fresh optimizer")
             return optimizer
         else:
             logger.info("Initializing new AdamW optimizer")
