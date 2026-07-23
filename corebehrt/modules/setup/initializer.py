@@ -115,6 +115,11 @@ class Initializer:
         if not self.checkpoint:
             return scheduler
 
+        # Skip scheduler state if optimizer wasn't loaded from checkpoint
+        # (e.g. MTL -> single-task transition)
+        if not getattr(self, "_optimizer_loaded_from_checkpoint", True):
+            logger.warning("Skipping scheduler state — fresh start after optimizer mismatch")
+            return scheduler
         logger.info("Loading scheduler_state_dict from checkpoint")
         scheduler.load_state_dict(self.checkpoint["scheduler_state_dict"])
         return scheduler
